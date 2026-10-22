@@ -1,4 +1,4 @@
-package com.patrisius.economichealth;
+package com.patricknofilter.economichealth;
 
 import android.app.Activity;
 import android.os.Bundle;
