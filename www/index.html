@@ -394,6 +394,8 @@ const SYMBOLS = [
   {id:'usdidr', sym:'USDIDR=X', label:'USD / IDR',       sec:'id',  digits:2},
   {id:'euridr', sym:'EURIDR=X', label:'EUR / IDR',       sec:'id',  digits:2},
   {id:'goldidr',sym:null,       label:'Emas · Rp/gram',  sec:'id',  digits:0, computed:true},
+  {id:'birate', sym:null,       label:'BI-Rate',         sec:'id',  digits:2, staticRate:true,
+   rate:5.75, ratePrev:4.75, ratePrevLabel:'Okt 2025', rateAsOf:'RDG 20–21 Okt 2026'},
   {id:'gold',   sym:'GC=F',     label:'Emas · USD/oz',   sec:'cmd', digits:2},
   {id:'silver', sym:'SI=F',     label:'Perak · USD/oz',  sec:'cmd', digits:2},
   {id:'wti',    sym:'CL=F',     label:'Minyak WTI',      sec:'cmd', digits:2},
@@ -472,6 +474,15 @@ function buildCards(){
 
 function paintCard(id){
   const st = state[id]; if (!st || st.price==null) return;
+  if (st.cfg.staticRate){ // e.g. BI-Rate: fixed policy rate, show pp change vs a year ago
+    setOdo($('val-' + id), fmt(st.price, st.cfg.digits) + '%');
+    const d = st.price - st.prev;
+    const chgEl = $('chg-' + id);
+    chgEl.textContent = (d>0?'+':d<0?'−':'±') + ' ' + fmt(Math.abs(d),2) + ' pp YoY';
+    chgEl.className = 'chg mono ' + (d>0 ? 'up' : d<0 ? 'down' : 'flat');
+    $('prev-' + id).textContent = st.cfg.ratePrevLabel + ': ' + fmt(st.prev, st.cfg.digits) + '% · ' + st.cfg.rateAsOf;
+    return;
+  }
   const prevPrice = st._shown;
   setOdo($('val-' + id), fmt(st.price, st.cfg.digits));
   const chgEl = $('chg-' + id);
@@ -1208,6 +1219,13 @@ $('btnRefresh').onclick = ()=>{ countdown = refreshSec; fetchData(); };
 $('selInterval').onchange = e => { refreshSec = +e.target.value; schedule(); };
 
 buildCards();
+/* seed static policy-rate tiles (no live feed) */
+SYMBOLS.forEach(cfg => {
+  if (cfg.staticRate){
+    state[cfg.id] = {price:cfg.rate, prev:cfg.ratePrev, chgPct:0, cfg};
+    paintCard(cfg.id);
+  }
+});
 /* ---------- Makro: BPS 2026 vs 2025 + health indicators ---------- */
 /* v: latest 2026 value, v2025: comparable 2025 value. deltaKind 'pp' = point
    difference, 'pct' = percent change. Filled from BPS releases. */
