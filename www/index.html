@@ -238,6 +238,7 @@
     <div class="mrow1"><span class="hdot" id="mh-dot"></span><span class="mname">Kesehatan Pasar</span><span class="mperiod">real-time</span></div>
     <div class="mrow2"><span class="mval mono" id="mh-score" style="font-size:24px">—</span><span class="munit">/ 100</span><span class="hbadge" id="mh-badge">—</span></div>
     <div class="mrow3" id="mh-detail">menunggu data pasar…</div>
+    <div class="mnote">IHSG naik = sehat · USD/IDR turun (rupiah menguat) = sehat. Tanpa bursa global.</div>
   </div>
   <div class="sec">🇮🇩 Indonesia</div>
   <div class="grid" id="sec-id"></div>
@@ -407,7 +408,7 @@ const SYMBOLS = [
   {id:'ssec',   sym:'000001.SS', label:'SSE Composite',   sec:'glb', digits:2},
   {id:'sti',    sym:'^STI',     label:'STI Singapura',   sec:'glb', digits:2},
 ];
-const MOOD_SET = ['ihsg','gold','wti','brent','btc','spx','ndq','nkx','hsi'];
+<!-- MOOD_SET retired in v2.3.1: market health is now Indonesia-only (ID_TILES) -->
 const state = {};   // id -> {price, chgPct, prev, time, label, digits}
 let refreshSec = 60, countdown = 60, timer = null;
 
@@ -629,8 +630,9 @@ function updateMarketHealth(){
   badge.textContent = kh.st==='g'?'SEHAT':kh.st==='y'?'WASPADA':'SAKIT';
   badge.className = 'hbadge ' + kh.st;
   dot.className = 'hdot ' + kh.st;
-  $('mh-detail').textContent =
-    `${kh.up} pasar naik · ${kh.down} turun dari ${kh.n} pantauan (IHSG, emas, minyak, BTC, S&P, Nasdaq, Nikkei, Hang Seng)`;
+  $('mh-detail').innerHTML = kh.parts.map(p =>
+    `<span class="c ${p.s===1?'u':p.s===0?'d':''}">${p.label} ${fmtPct(p.chg)}</span>`
+  ).join(' · ');
 }
 
 function updateMarketTape(){
@@ -1320,13 +1322,28 @@ function macroHealth(){
   return {score, st: score>=75?'g':score>=50?'y':'r', g, y, r, n};
 }
 
+/* Pasar health = Indonesian markets only (no globals):
+   IHSG up = good; USD/IDR down (stronger rupiah) = good. */
+const ID_TILES = [
+  {id:'ihsg',   label:'IHSG',    invert:false},
+  {id:'usdidr', label:'USD/IDR', invert:true},
+];
+
 function marketHealth(){
-  let up=0, down=0;
-  MOOD_SET.forEach(id => { const v = state[id].chgPct; if (v==null) return; v>0?up++:v<0?down++:0; });
-  const n = up+down;
+  let pts=0, n=0;
+  const parts=[];
+  ID_TILES.forEach(t => {
+    const v = state[t.id].chgPct;
+    if (v==null) return;
+    n++;
+    let s = v>0.25 ? 1 : v<-0.25 ? 0 : 0.5; // flat band ±0,25%
+    if (t.invert) s = 1-s;
+    pts += s;
+    parts.push({label:t.label, chg:v, s});
+  });
   if (!n) return null;
-  const score = Math.round(up/n*100);
-  return {score, st: score>=60?'g':score>=40?'y':'r', up, down, n};
+  const score = Math.round(pts/n*100);
+  return {score, st: score>=60?'g':score>=40?'y':'r', parts, n};
 }
 
 function renderMaster(){
