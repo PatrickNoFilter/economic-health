@@ -1,0 +1,7 @@
+# signing key stays on the phone + this machine only — never commit
+keystore/
+# build outputs
+out/
+android/assets/
+android/compiled.zip
+android/gen/

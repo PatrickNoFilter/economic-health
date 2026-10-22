@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e14">
+<title>Indonesia Economy Health</title>
+<style>
+  :root{
+    --bg:#0a0e14; --card:#111826; --card2:#0d1420; --line:#1e2a3d;
+    --txt:#e8edf5; --mut:#8b98ad; --up:#34d399; --down:#f87171;
+    --gold:#fbbf24; --accent:#38bdf8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--bg); color:var(--txt); font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; min-height:100vh;}
+  .mono{font-family:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;}
+
+  header{position:sticky; top:0; z-index:20; background:rgba(10,14,20,.96); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line); padding:12px 14px;}
+  .hrow{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  h1{font-size:19px; letter-spacing:.5px; font-weight:800;}
+  h1 .pulse{color:var(--up);}
+  .clockbox{text-align:right; font-size:11px; color:var(--mut); line-height:1.5;}
+  #clock{font-size:15px; color:var(--txt); font-weight:700;}
+  .statusline{display:flex; align-items:center; gap:8px; margin-top:8px; font-size:11px; color:var(--mut);}
+  .dot{width:8px; height:8px; border-radius:50%; background:#555; display:inline-block;}
+  .dot.live{background:var(--up); box-shadow:0 0 8px var(--up); animation:blink 1.6s infinite;}
+  .dot.err{background:var(--down);}
+  @keyframes blink{50%{opacity:.35}}
+  #mood{margin-left:auto; font-weight:800; font-size:11px; padding:4px 10px; border-radius:20px; border:1px solid var(--line);}
+  #mood.on{color:var(--up); border-color:var(--up);}
+  #mood.off{color:var(--down); border-color:var(--down);}
+  #mood.mix{color:var(--gold); border-color:var(--gold);}
+
+  .tape{overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); background:#0c121c; padding:7px 0;}
+  .tape-inner{display:inline-block; animation:marq 45s linear infinite; will-change:transform;}
+  @keyframes marq{to{transform:translateX(-50%)}}
+  .titem{display:inline-block; margin:0 14px; font-size:12px;}
+  .titem b{font-weight:700;}
+  .titem .u{color:var(--up);} .titem .d{color:var(--down);}
+  .dtape{flex:none;}
+  #dtape{animation-duration:38s;}
+
+  main{padding:12px 12px 30px; max-width:760px; margin:0 auto;}
+  .sec{font-size:12px; font-weight:800; letter-spacing:1.5px; color:var(--mut); margin:18px 2px 8px; text-transform:uppercase;}
+  .sec:first-child{margin-top:6px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:430px){ .grid{grid-template-columns:1fr;} }
+
+  .card{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:14px; padding:12px 13px; position:relative; overflow:hidden; transition:background .3s;}
+  .card.flash-up{animation:fUp .9s;} .card.flash-down{animation:fDown .9s;}
+  @keyframes fUp{0%{background:#0f2e22;}100%{background:linear-gradient(180deg,var(--card),var(--card2));}}
+  @keyframes fDown{0%{background:#33141a;}100%{background:linear-gradient(180deg,var(--card),var(--card2));}}
+  .clabel{font-size:11.5px; color:var(--mut); font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:6px;}
+  .livebadge{font-size:9px; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:.5px;}
+  .livebadge.open{background:rgba(52,211,153,.14); color:var(--up); border:1px solid var(--up);}
+  .livebadge.closed{background:rgba(139,152,173,.12); color:var(--mut); border:1px solid #334;}
+  .cval{font-size:26px; font-weight:800; margin:7px 0 5px; letter-spacing:.3px; min-height:34px; line-height:1.25;}
+  .crow{display:flex; justify-content:space-between; align-items:center; font-size:11.5px;}
+  .chg{font-weight:800; padding:3px 9px; border-radius:8px;}
+  .chg.up{color:var(--up); background:rgba(52,211,153,.12);}
+  .chg.down{color:var(--down); background:rgba(248,113,113,.12);}
+  .chg.flat{color:var(--mut); background:rgba(139,152,173,.12);}
+  .prev{color:var(--mut);}
+
+  /* odometer — em-based steps (deterministic on every WebView; no flex, no % heights) */
+  .odo{display:inline-block; height:1em; overflow:hidden; vertical-align:top;}
+  .strip{display:block; transition:transform .55s cubic-bezier(.25,.9,.3,1.12); will-change:transform;}
+  .strip span{display:block; height:1em; line-height:1em; text-align:center;}
+  .ostat{display:inline-block; height:1em; line-height:1em; vertical-align:top;}
+
+  .controls{display:flex; gap:8px; align-items:center; margin:16px 2px 4px; font-size:12px; color:var(--mut);}
+  select,button{background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; font-size:13px;}
+  button:active{transform:scale(.96);}
+  #countdown{margin-left:auto;}
+
+  footer{padding:18px 14px 40px; text-align:center; font-size:10.5px; color:#5b6678; line-height:1.7;}
+
+  /* IHSG detail overlay — pro dashboard */
+  .tap-hint{font-size:9.5px; font-weight:400; opacity:.75;}
+  #detail{position:fixed; inset:0; background:var(--bg); z-index:40; transform:translateX(100%);
+    transition:transform .28s ease; display:flex; flex-direction:column;}
+  #detail.open{transform:translateX(0);}
+  .dhead{display:flex; align-items:center; gap:10px; padding:12px 14px;
+    border-bottom:1px solid var(--line); background:rgba(10,14,20,.97);}
+  #btnBack{background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:6px 14px; font-size:18px; color:var(--txt); line-height:1;}
+  .dhead h2{font-size:15px; font-weight:800;}
+  .dhead .sub{font-size:10px; color:var(--mut);}
+  .dbody{overflow-y:auto; padding:12px 14px 44px; max-width:760px; margin:0 auto; width:100%;}
+  .dhero{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:14px; padding:16px 14px;}
+  .dprice-row{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .dhero .big{font-size:38px; font-weight:800; margin:0; letter-spacing:.3px;}
+  .dchg{display:flex; flex-direction:column; align-items:flex-end; gap:5px;}
+  .chgpts{font-size:13px; font-weight:700;}
+  .dtime{font-size:11px; color:var(--mut); margin-top:8px;}
+  .rangebar{margin-top:14px;}
+  .rlabels{display:flex; justify-content:space-between; font-size:10.5px; color:var(--mut); margin-bottom:6px;}
+  .rlabels .rmid{letter-spacing:1.2px; text-transform:uppercase; font-size:9px;}
+  .rtrack{position:relative; height:6px; background:#1b2434; border-radius:3px;}
+  .rmarker{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%;
+    transform:translateX(-50%); box-shadow:0 0 0 1px var(--line);}
+  .rprev{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--mut);
+    opacity:.8; transform:translateX(-50%); border-radius:1px;}
+  .statgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;}
+  .stat{background:rgba(255,255,255,.025); border:1px solid var(--line); border-radius:10px;
+    padding:9px 11px; display:flex; flex-direction:column; gap:4px;}
+  .stat span{font-size:9.5px; color:var(--mut); text-transform:uppercase; letter-spacing:.8px;}
+  .stat b{font-size:14px;}
+  .stat.wide{grid-column:1/-1;}
+  .chartwrap{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:14px; padding:10px 4px 2px;}
+  #d-chart{width:100%; height:230px; display:block;}
+  .breadth{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:14px; padding:14px;}
+  .bbar{display:flex; height:10px; border-radius:5px; overflow:hidden; background:#1b2434;}
+  .bup{background:var(--up); transition:width .5s;} .bdown{background:var(--down); transition:width .5s;}
+  .bflat{background:#3b475c; transition:width .5s;}
+  .blegend{display:flex; justify-content:space-between; margin-top:9px; font-size:11.5px; color:var(--mut);}
+  .mrow{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); font-size:13px;}
+  .mrow .rk{width:20px; color:var(--mut); font-weight:700; font-size:11px;}
+  .mrow .tk{font-weight:800; width:72px;}
+  .mrow .nm{flex:1; color:var(--mut); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mrow .pr{text-align:right;}
+  .mrow .pr .p{font-weight:700;}
+  .mrow .pr .c{font-size:11px; font-weight:800;}
+  .c.u{color:var(--up);} .c.d{color:var(--down);}
+  .tabs{display:flex; gap:8px; padding:10px 14px 0;}
+  .tab{flex:1; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:11px;
+    color:var(--mut); font-size:14px; font-weight:700; cursor:pointer;}
+  .tab.on{color:var(--txt); border-color:var(--gold); background:#161d2c;}
+  .master{background:linear-gradient(160deg,#141b2c,#0d1220); border:1px solid var(--line); border-radius:16px;
+    padding:18px 16px; margin:12px 0 4px; text-align:center;}
+  .master .mlabel{font-size:11px; color:var(--mut); letter-spacing:2px; font-weight:700;}
+  .master .mscore{font-size:44px; font-weight:800; line-height:1.15;}
+  .master .mstatus{display:inline-block; font-size:13px; font-weight:800; letter-spacing:1px;
+    padding:6px 18px; border-radius:20px; margin-top:6px;}
+  .mstatus.g{background:rgba(34,197,94,.15); color:var(--up); border:1px solid var(--up);}
+  .mstatus.y{background:rgba(234,179,8,.13); color:#eab308; border:1px solid #eab308;}
+  .mstatus.r{background:rgba(239,68,68,.13); color:var(--down); border:1px solid var(--down);}
+  .master .mbreak{display:flex; justify-content:center; gap:14px; margin-top:12px; font-size:12px; color:var(--mut);}
+  .master .mbreak b{font-size:15px;}
+  .mbar{display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:12px; background:#131a26;}
+  .mbar div{height:100%;}
+  .mcard{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-top:10px;}
+  .mcard .mrow1{display:flex; align-items:center; gap:8px;}
+  .hdot{width:11px; height:11px; border-radius:50%; flex:none;}
+  .hdot.g{background:var(--up); box-shadow:0 0 8px var(--up);}
+  .hdot.y{background:#eab308; box-shadow:0 0 8px #eab308;}
+  .hdot.r{background:var(--down); box-shadow:0 0 8px var(--down);}
+  .mcard .mname{font-weight:700; font-size:14px; flex:1;}
+  .mcard .mperiod{font-size:10.5px; color:var(--mut);}
+  .mcard .mrow2{display:flex; align-items:baseline; gap:10px; margin-top:8px;}
+  .mcard .mval{font-size:26px; font-weight:800;}
+  .mcard .munit{font-size:12px; color:var(--mut);}
+  .hbadge{margin-left:auto; font-size:11px; font-weight:800; letter-spacing:.5px; padding:4px 12px; border-radius:14px;}
+  .hbadge.g{background:rgba(34,197,94,.15); color:var(--up);}
+  .hbadge.y{background:rgba(234,179,8,.15); color:#eab308;}
+  .hbadge.r{background:rgba(239,68,68,.15); color:var(--down);}
+  .mcard .mrow3{font-size:12px; color:var(--mut); margin-top:6px;}
+  .mcard .mnote{font-size:11px; color:#5b6678; margin-top:6px; line-height:1.6;}
+  #stocks,#sdetail{position:fixed; inset:0; background:var(--bg); z-index:50; transform:translateX(100%);
+    transition:transform .28s ease; display:flex; flex-direction:column;}
+  #sdetail{z-index:60;}
+  #stocks.open,#sdetail.open{transform:translateX(0);}
+  #stocks .dbody,#sdetail .dbody{flex:1;}
+  .wbtn{display:block; width:100%; margin-top:10px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:13px; color:var(--txt); font-size:14px; font-weight:700; cursor:pointer;}
+  .stk-tools{padding:10px 14px 2px; flex:none;}
+  #stock-q{width:100%; background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; color:var(--txt); font-size:14px; outline:none; box-sizing:border-box;}
+  .chips{display:flex; gap:6px; margin-top:8px;}
+  .chip{flex:1; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:6px 4px;
+    color:var(--mut); font-size:12px; font-weight:700; cursor:pointer;}
+  .chip.on{color:var(--txt); border-color:var(--gold);}
+  .stk-row{display:flex; align-items:center; gap:10px; padding:9px 2px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .stk-row .tk{font-weight:800; min-width:58px;}
+  .stk-row .nm{flex:1; color:var(--mut); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .stk-row .pr{text-align:right;}
+  #s-chart{width:100%; height:230px; display:block;}
+  .srow{display:grid; grid-template-columns:minmax(0,1fr) 110px 66px; align-items:center; gap:8px; padding:5px 2px; font-size:12px;}
+  .sname{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sname small{color:var(--mut); font-size:10px; margin-left:5px;}
+  .strack{position:relative; height:8px; background:#131a26; border-radius:4px;}
+  .smid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--mut); opacity:.55;}
+  .sfill{position:absolute; top:0; bottom:0; border-radius:4px;}
+  .sfill.u{background:var(--up); left:50%;}
+  .sfill.d{background:var(--down); right:50%;}
+  .spct{text-align:right;}
+  .dsub{font-size:11px; color:var(--mut); margin:8px 2px 0; text-align:center;}
+  .dnote{font-size:10.5px; color:#5b6678; text-align:center; margin-top:16px; line-height:1.7;}
+  .skel{padding:26px; text-align:center; color:var(--mut); font-size:13px;}
+  #toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:#1c2536;
+    border:1px solid var(--line); color:var(--txt); font-size:12px; padding:10px 16px; border-radius:12px;
+    opacity:0; transition:all .3s; pointer-events:none; max-width:88vw; text-align:center; z-index:50;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1><span class="pulse">◉</span> INDONESIA ECONOMY HEALTH</h1>
+    <div class="clockbox mono"><div id="clock">--:--:--</div><div>WIB · Jakarta</div></div>
+  </div>
+  <div class="statusline">
+    <span class="dot" id="netdot"></span><span id="netlabel">connecting…</span>
+    <span id="mood" class="mix">—</span>
+  </div>
+</header>
+
+<div class="tape"><div class="tape-inner mono" id="tape"></div></div>
+
+<div class="tabs">
+  <button class="tab on" data-tab="makro">🏛️ Makro</button>
+  <button class="tab" data-tab="pasar">📈 Pasar</button>
+</div>
+
+<main>
+<div id="pane-makro">
+  <div class="sec">🏛️ Kesehatan Ekonomi Indonesia</div>
+  <div class="dsub" id="macro-sub">Data resmi BPS · rilis terbaru per Okt 2026 vs periode sama 2025</div>
+  <div class="master" id="master"></div>
+  <div id="macro-grid"></div>
+  <div class="dnote" id="macro-note"></div>
+</div>
+<div id="pane-pasar" style="display:none">
+  <div class="sec">🇮🇩 Indonesia</div>
+  <div class="grid" id="sec-id"></div>
+  <button class="wbtn" id="btnStocks1">📋 Semua Emiten IDX →</button>
+
+  <div class="sec">🪙 Commodities &amp; Crypto</div>
+  <div class="grid" id="sec-cmd"></div>
+
+  <div class="sec">🌍 Global Markets</div>
+  <div class="grid" id="sec-glb"></div>
+
+  <div class="controls">
+    <button id="btnRefresh">⟳ Refresh</button>
+    <select id="selInterval">
+      <option value="30">30s</option>
+      <option value="60" selected>60s</option>
+      <option value="300">5 min</option>
+    </select>
+    <span id="countdown" class="mono"></span>
+  </div>
+</div>
+</main>
+
+<div id="detail">
+  <div class="dhead">
+    <button id="btnBack">‹</button>
+    <div>
+      <h2>IHSG</h2>
+      <div class="sub">Indonesia Stock Exchange · IDX:COMPOSITE</div>
+    </div>
+    <span class="livebadge closed" id="d-live" style="margin-left:auto">···</span>
+  </div>
+  <div class="tape dtape"><div class="tape-inner mono" id="dtape"></div></div>
+  <div class="dbody">
+    <div class="dhero">
+      <div class="dprice-row">
+        <div class="big mono" id="d-price">—</div>
+        <div class="dchg">
+          <span class="chg mono" id="d-chg">—</span>
+          <span class="chgpts mono" id="d-pts"></span>
+        </div>
+      </div>
+      <div class="dtime mono" id="d-time"></div>
+      <div class="rangebar">
+        <div class="rlabels"><span id="d-low-l"></span><span class="rmid">Day Range</span><span id="d-high-l"></span></div>
+        <div class="rtrack"><div class="rprev" id="d-prevmark"></div><div class="rmarker" id="d-marker"></div></div>
+      </div>
+      <div class="statgrid">
+        <div class="stat"><span>Open</span><b class="mono" id="d-open">—</b></div>
+        <div class="stat"><span>Prev Close</span><b class="mono" id="d-prev">—</b></div>
+        <div class="stat"><span>Day High</span><b class="mono" id="d-high" style="color:var(--up)">—</b></div>
+        <div class="stat"><span>Day Low</span><b class="mono" id="d-low" style="color:var(--down)">—</b></div>
+        <div class="stat wide"><span>Volume</span><b class="mono" id="d-vol">—</b></div>
+      </div>
+    </div>
+
+    <div class="sec">Intraday</div>
+    <div class="chartwrap"><canvas id="d-chart"></canvas></div>
+
+    <div class="sec">Market Breadth <span style="font-weight:400;text-transform:none;letter-spacing:0">(24 saham pantauan)</span></div>
+    <div class="breadth">
+      <div class="bbar"><div class="bup" id="b-up" style="width:0%"></div><div class="bflat" id="b-flat" style="width:100%"></div><div class="bdown" id="b-down" style="width:0%"></div></div>
+      <div class="blegend mono">
+        <span class="c u">▲ Up <b id="b-up-n">0</b></span>
+        <span>▬ Flat <b id="b-flat-n">0</b></span>
+        <span class="c d">▼ Down <b id="b-down-n">0</b></span>
+      </div>
+    </div>
+
+    <div class="sec">◆ Sector Performance <span style="font-weight:400;text-transform:none;letter-spacing:0">(klasifikasi emiten · pantauan)</span></div>
+    <div id="d-sectors"><div class="skel">memuat…</div></div>
+    <div class="dsub mono" id="d-sector-sum"></div>
+
+    <div class="sec">▲ Top Gainers</div>
+    <div id="d-gainers"><div class="skel">memuat…</div></div>
+    <div class="sec">▼ Top Losers</div>
+    <div id="d-losers"><div class="skel">memuat…</div></div>
+    <div class="sec">◉ Most Active <span style="font-weight:400;text-transform:none;letter-spacing:0">(by value · pantauan)</span></div>
+    <div id="d-active"><div class="skel">memuat…</div></div>
+    <button class="wbtn" id="btnStocks2">📋 Semua Emiten IDX →</button>
+
+    <div style="text-align:center; margin-top:16px;"><button id="btnDRefresh">⟳ Refresh</button></div>
+    <div class="dnote" id="d-note">Movers dari 24 saham pantauan (blue chips &amp; pemberat indeks)<br>Data tertunda · sumber: Yahoo Finance</div>
+  </div>
+</div>
+
+<div id="stocks">
+  <div class="dhead">
+    <button id="btnStocksBack">‹</button>
+    <div><h2>Semua Emiten</h2><div class="sub">Bursa Efek Indonesia · IDX</div></div>
+    <span class="livebadge closed" id="stocks-live" style="margin-left:auto">···</span>
+  </div>
+  <div class="stk-tools">
+    <input id="stock-q" placeholder="Cari ticker / nama perusahaan…" autocomplete="off">
+    <div class="chips">
+      <button class="chip on" data-sort="g">▲ Naik</button>
+      <button class="chip" data-sort="l">▼ Turun</button>
+      <button class="chip" data-sort="n">A–Z</button>
+      <button class="chip" data-sort="p">Harga</button>
+    </div>
+  </div>
+  <div class="dsub mono" id="stocks-sum"></div>
+  <div class="dbody" id="stock-list"></div>
+</div>
+
+<div id="sdetail">
+  <div class="dhead">
+    <button id="btnSBack">‹</button>
+    <div><h2 class="mono" id="s-ticker">—</h2><div class="sub" id="s-name">—</div></div>
+    <span class="livebadge closed" id="s-live" style="margin-left:auto">···</span>
+  </div>
+  <div class="dbody">
+    <div class="dhero">
+      <div class="dprice-row">
+        <div class="big mono" id="s-price">—</div>
+        <div class="dchg">
+          <span class="chg mono" id="s-chg">—</span>
+          <span class="chgpts mono" id="s-pts"></span>
+        </div>
+      </div>
+      <div class="dtime mono" id="s-time"></div>
+      <div class="rangebar">
+        <div class="rlabels"><span id="s-low-l"></span><span class="rmid">Day Range</span><span id="s-high-l"></span></div>
+        <div class="rtrack"><div class="rprev" id="s-prevmark"></div><div class="rmarker" id="s-marker"></div></div>
+      </div>
+      <div class="statgrid">
+        <div class="stat"><span>Open</span><b class="mono" id="s-open">—</b></div>
+        <div class="stat"><span>Prev Close</span><b class="mono" id="s-prev">—</b></div>
+        <div class="stat"><span>Day High</span><b class="mono" id="s-high" style="color:var(--up)">—</b></div>
+        <div class="stat"><span>Day Low</span><b class="mono" id="s-low" style="color:var(--down)">—</b></div>
+        <div class="stat wide"><span>Volume</span><b class="mono" id="s-vol">—</b></div>
+      </div>
+    </div>
+    <div class="sec">Intraday</div>
+    <div class="chartwrap"><canvas id="s-chart"></canvas></div>
+    <div class="dnote">Data tertunda ±15 mnt · sumber: Yahoo Finance</div>
+  </div>
+</div>
+
+<footer>
+  Data tertunda · sumber: Yahoo Finance (tanpa API key)<br>
+  Angka beranimasi seperti papan bursa · bukan saran investasi
+</footer>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* Economic Health v1.0 — single-file dashboard, Yahoo Finance v8 chart API (no key) */
+
+const SYMBOLS = [
+  {id:'ihsg',   sym:'^JKSE',   label:'IHSG',            sec:'id',  digits:2, live:true},
+  {id:'usdidr', sym:'USDIDR=X', label:'USD / IDR',       sec:'id',  digits:2},
+  {id:'euridr', sym:'EURIDR=X', label:'EUR / IDR',       sec:'id',  digits:2},
+  {id:'goldidr',sym:null,       label:'Emas · Rp/gram',  sec:'id',  digits:0, computed:true},
+  {id:'gold',   sym:'GC=F',     label:'Emas · USD/oz',   sec:'cmd', digits:2},
+  {id:'silver', sym:'SI=F',     label:'Perak · USD/oz',  sec:'cmd', digits:2},
+  {id:'wti',    sym:'CL=F',     label:'Minyak WTI',      sec:'cmd', digits:2},
+  {id:'brent',  sym:'BZ=F',     label:'Minyak Brent',    sec:'cmd', digits:2},
+  {id:'btc',    sym:'BTC-USD',  label:'Bitcoin · USD',   sec:'cmd', digits:0},
+  {id:'eth',    sym:'ETH-USD',  label:'Ethereum · USD',  sec:'cmd', digits:2},
+  {id:'spx',    sym:'^GSPC',    label:'S&P 500',         sec:'glb', digits:2},
+  {id:'ndq',    sym:'^IXIC',    label:'Nasdaq 100',      sec:'glb', digits:2},
+  {id:'nkx',    sym:'^N225',    label:'Nikkei 225',      sec:'glb', digits:2},
+  {id:'hsi',    sym:'^HSI',     label:'Hang Seng',       sec:'glb', digits:2},
+  {id:'kospi',  sym:'^KS11',    label:'KOSPI',           sec:'glb', digits:2},
+  {id:'ssec',   sym:'000001.SS', label:'SSE Composite',   sec:'glb', digits:2},
+  {id:'sti',    sym:'^STI',     label:'STI Singapura',   sec:'glb', digits:2},
+];
+const MOOD_SET = ['ihsg','gold','wti','brent','btc','spx','ndq','nkx','hsi'];
+const state = {};   // id -> {price, chgPct, prev, time, label, digits}
+let refreshSec = 60, countdown = 60, timer = null;
+
+const $ = id => document.getElementById(id);
+const fmt = (v,d) => v==null||isNaN(v) ? '—'
+  : Number(v).toLocaleString('id-ID',{minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtPct = v => v==null||isNaN(v) ? '—'
+  : (v>0?'+':v<0?'−':'') + Math.abs(v).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%';
+
+/* ---------- odometer ---------- */
+function setOdo(el, text){
+  const chars = [...text];
+  const key = chars.map(c => /\d/.test(c) ? 'd' : c).join('');
+  if (el._key !== key){
+    el.innerHTML = '';
+    el._digits = [];
+    chars.forEach(c => {
+      if (/\d/.test(c)){
+        const wrap = document.createElement('span');
+        wrap.className = 'odo';
+        const strip = document.createElement('span');
+        strip.className = 'strip';
+        for (let i=0;i<10;i++){ const s=document.createElement('span'); s.textContent=i; strip.appendChild(s); }
+        strip.style.transform = 'translateY(0em)';
+        wrap.appendChild(strip);
+        el.appendChild(wrap);
+        el._digits.push(strip);
+      } else {
+        const s = document.createElement('span');
+        s.className = 'ostat'; s.textContent = c;
+        el.appendChild(s);
+      }
+    });
+    el._key = key;
+  }
+  let di = 0;
+  chars.forEach(c => { if (/\d/.test(c)) el._digits[di++].style.transform = `translateY(${-+c}em)`; });
+}
+
+/* ---------- cards ---------- */
+function buildCards(){
+  SYMBOLS.forEach(cfg => {
+    const card = document.createElement('div');
+    card.className = 'card'; card.id = 'card-' + cfg.id;
+    card.innerHTML =
+      `<div class="clabel"><span>${cfg.label}</span>` +
+      (cfg.live ? `<span class="livebadge closed" id="live-${cfg.id}">···</span>` : '') + `</div>` +
+      `<div class="cval mono" id="val-${cfg.id}"></div>` +
+      `<div class="crow"><span class="chg flat mono" id="chg-${cfg.id}">—</span>` +
+      `<span class="prev mono" id="prev-${cfg.id}"></span></div>`;
+    $('sec-' + cfg.sec).appendChild(card);
+    setOdo($('val-' + cfg.id), '0');
+    state[cfg.id] = {price:null, chgPct:null, prev:null, cfg};
+    if (cfg.id === 'ihsg'){
+      card.style.cursor = 'pointer';
+      card.querySelector('.clabel span').innerHTML += ' <span class="tap-hint">· tap for detail ›</span>';
+      card.onclick = openIhsgDetail;
+    }
+  });
+}
+
+function paintCard(id){
+  const st = state[id]; if (!st || st.price==null) return;
+  const prevPrice = st._shown;
+  setOdo($('val-' + id), fmt(st.price, st.cfg.digits));
+  const chgEl = $('chg-' + id);
+  chgEl.textContent = fmtPct(st.chgPct);
+  chgEl.className = 'chg mono ' + (st.chgPct>0 ? 'up' : st.chgPct<0 ? 'down' : 'flat');
+  $('prev-' + id).textContent = st.prev!=null ? 'prev ' + fmt(st.prev, st.cfg.digits) : '';
+  const card = $('card-' + id);
+  if (prevPrice!=null && st.price !== prevPrice){
+    card.classList.remove('flash-up','flash-down'); void card.offsetWidth;
+    card.classList.add(st.price > prevPrice ? 'flash-up' : 'flash-down');
+  }
+  st._shown = st.price;
+}
+
+/* ---------- IDX market status (WIB) ---------- */
+function idxOpen(){
+  try{
+    const parts = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+    const g = t => (parts.find(p=>p.type===t)||{}).value;
+    const wd = g('weekday'), hm = g('hour') + g('minute');
+    if (wd==='Sat' || wd==='Sun') return false;
+    return (hm>='0900' && hm<'1200') || (hm>='1400' && hm<'1500');
+  }catch(e){ return false; }
+}
+
+/* ---------- data (Yahoo Finance v8 chart, no key) ---------- */
+const YQ = s => `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1m&range=1d`;
+
+/* 'YYYY-MM-DD' in Asia/Jakarta for a timestamp (ms) */
+function jakartaDay(tsMs){
+  const p = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(tsMs));
+  const g = t => p.find(x=>x.type===t).value;
+  return `${g('year')}-${g('month')}-${g('day')}`;
+}
+/* True previous close from daily bars: close of the last completed trading day
+   before today. Yahoo's chartPreviousClose for ^JKSE lagged a full day
+   (Tue 20 Oct showed Friday's 5.185,10 instead of Monday's 4.996,61). */
+async function fetchDailyPrev(sym){
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`, {cache:'no-store'});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  const res = d.chart.result[0];
+  const ts = res.timestamp || [], cl = (res.indicators.quote[0] || {}).close || [];
+  const today = jakartaDay(Date.now());
+  let prev = null;
+  for (let i=0;i<ts.length;i++){
+    if (cl[i]==null) continue;
+    if (jakartaDay(ts[i]*1000) < today) prev = cl[i];
+  }
+  return prev;
+}
+
+async function fetchSymbol(cfg){
+  const ctrl = new AbortController();
+  const to = setTimeout(()=>ctrl.abort(), 20000);
+  try{
+    const r = await fetch(YQ(cfg.sym), {signal:ctrl.signal, cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const res = d.chart.result[0], m = res.meta;
+    let price = m.regularMarketPrice;
+    let prev = (m.chartPreviousClose!=null ? m.chartPreviousClose : m.previousClose);
+    if (cfg.id==='ihsg'){
+      try { const dp = await fetchDailyPrev(cfg.sym); if (dp!=null) prev = dp; } catch(e){}
+    }
+    if (price==null){
+      const cl = (res.indicators.quote[0].close||[]).filter(v=>v!=null);
+      price = cl.length ? cl[cl.length-1] : null;
+    }
+    if (price==null || prev==null) throw new Error('empty quote');
+    const q0 = res.indicators.quote[0] || {};
+    let vol = m.regularMarketVolume;
+    if (vol==null) vol = (q0.volume||[]).reduce((a,v)=>a+(v||0),0) || null;
+    if (vol===0) vol = null; // indices report 0 — show '—' instead of '0 sh'
+    return {id:cfg.id, price, prev, chgPct:(price-prev)/prev*100,
+            dayHigh:m.regularMarketDayHigh, dayLow:m.regularMarketDayLow,
+            dayOpen:m.regularMarketOpen, volume:vol};
+  } finally { clearTimeout(to); }
+}
+
+function paintFromSnap(snap){
+  Object.keys(snap).forEach(id=>{
+    if (!state[id]) return;
+    const s = snap[id], st = state[id];
+    st.price = s.price; st.prev = s.prev; st.chgPct = s.chgPct;
+    st.dayHigh = s.dayHigh; st.dayLow = s.dayLow;
+    st.dayOpen = s.dayOpen; st.volume = s.volume;
+    paintCard(id);
+  });
+  // computed: gold Rp/gram = XAUUSD / 31.1034768 * USDIDR
+  const g = state.gold, fx = state.usdidr;
+  if (g.price!=null && fx.price!=null){
+    const st = state.goldidr;
+    st.price = g.price / 31.1034768 * fx.price;
+    st.chgPct = (g.chgPct!=null && fx.chgPct!=null) ? (g.chgPct + fx.chgPct) : g.chgPct;
+    st.prev = null;
+    paintCard('goldidr');
+  }
+  updateMood(); updateTape(); updateLive();
+}
+
+async function fetchData(){
+  const cfgs = SYMBOLS.filter(s=>s.sym);
+  const results = await Promise.allSettled(cfgs.map(fetchSymbol));
+  const snap = {};
+  results.forEach(r=>{
+    if (r.status!=='fulfilled') return;
+    const v = r.value;
+    snap[v.id] = {price:v.price, prev:v.prev, chgPct:v.chgPct, dayHigh:v.dayHigh, dayLow:v.dayLow,
+                 dayOpen:v.dayOpen, volume:v.volume};
+  });
+  if (Object.keys(snap).length > 0){
+    try{ localStorage.setItem('eh_cache', JSON.stringify({t:Date.now(), snap})); }catch(e){}
+    paintFromSnap(snap);
+    setNet(true);
+  } else {
+    setNet(false);
+    const c = localStorage.getItem('eh_cache');
+    if (c){
+      try{ paintFromSnap(JSON.parse(c).snap); toast('Update gagal — menampilkan data terakhir'); }
+      catch(e){ toast('Update gagal dan tidak ada cache'); }
+    } else toast('Update gagal — belum ada data');
+  }
+}
+
+function updateMood(){
+  let up=0, down=0;
+  MOOD_SET.forEach(id => { const v = state[id].chgPct; if (v==null) return; v>0?up++:v<0?down++:0; });
+  const m = $('mood');
+  if (!up && !down){ m.textContent='—'; m.className='mix'; return; }
+  if (up > down+1){ m.textContent='▲ RISK ON'; m.className='on'; }
+  else if (down > up+1){ m.textContent='▼ RISK OFF'; m.className='off'; }
+  else { m.textContent='◆ MIXED'; m.className='mix'; }
+}
+
+function updateTape(){
+  const items = SYMBOLS.filter(s=>state[s.id].price!=null).map(s => {
+    const st = state[s.id], cls = st.chgPct>0?'u':st.chgPct<0?'d':'';
+    return `<span class="titem"><b>${s.label}</b> ${fmt(st.price,s.digits)} <span class="${cls}">${fmtPct(st.chgPct)}</span></span>`;
+  }).join('');
+  $('tape').innerHTML = items + items; // duplicate for seamless loop
+}
+
+/* IDX-IC sector classification for the 24-stock watchlist */
+const SECTOR_OF = {
+  BBCA:'Financials', BBRI:'Financials', BMRI:'Financials', BBNI:'Financials', BRIS:'Financials', ARTO:'Financials',
+  ADRO:'Energy', BREN:'Energy', CUAN:'Energy', DSSA:'Energy',
+  ANTM:'Basic Materials', INCO:'Basic Materials', MDKA:'Basic Materials', AMMN:'Basic Materials', SMGR:'Basic Materials', INTP:'Basic Materials',
+  TLKM:'Infrastructures', PGAS:'Infrastructures',
+  ASII:'Industrials', UNTR:'Industrials',
+  INDF:'Consumer Non-Cyclicals', ICBP:'Consumer Non-Cyclicals',
+  GOTO:'Technology', BUKA:'Technology',
+};
+
+function renderSectors(rows){
+  const by = {};
+  rows.forEach(r=>{
+    const s = SECTOR_OF[r.sym]; if(!s) return;
+    (by[s] = by[s] || []).push(r);
+  });
+  const secs = Object.keys(by).map(s=>{
+    const rs = by[s], avg = rs.reduce((a,r)=>a+r.chg,0)/rs.length;
+    return {name:s, n:rs.length, avg};
+  }).sort((a,b)=>b.avg-a.avg);
+  if(!secs.length){ $('d-sectors').innerHTML = '<div class="skel">tidak ada data</div>'; $('d-sector-sum').textContent=''; return; }
+  const mx = Math.max(...secs.map(s=>Math.abs(s.avg)), 0.01);
+  $('d-sectors').innerHTML = secs.map(s=>{
+    const w = (Math.abs(s.avg)/mx*50).toFixed(1);
+    const cls = s.avg>=0?'u':'d';
+    return `<div class="srow"><div class="sname">${s.name}<small>${s.n} emiten</small></div>` +
+      `<div class="strack"><div class="smid"></div><div class="sfill ${cls}" style="width:${w}%"></div></div>` +
+      `<div class="spct mono c ${cls}">${fmtPct(s.avg)}</div></div>`;
+  }).join('');
+  const upS = secs.filter(s=>s.avg>0.05).length, dnS = secs.filter(s=>s.avg<-0.05).length;
+  $('d-sector-sum').textContent =
+    `${secs.length} sektor · ${upS} menguat · ${dnS} melemah · terbaik: ${secs[0].name} · terlemah: ${secs[secs.length-1].name}`;
+}
+
+/* running text of current stock prices on the IHSG detail page (24-stock watchlist) */
+function updateDetailTape(rows){
+  const items = rows.map(r => {
+    const cls = r.chg>0?'u':r.chg<0?'d':'';
+    return `<span class="titem"><b>${r.sym}</b> ${fmt(r.price,0)} <span class="${cls}">${fmtPct(r.chg)}</span></span>`;
+  }).join('');
+  $('dtape').innerHTML = items + items; // duplicate for seamless loop
+}
+
+function updateLive(){
+  const open = idxOpen();
+  const b = $('live-ihsg');
+  if (b){ b.textContent = open ? '● LIVE' : 'CLOSED'; b.className = 'livebadge ' + (open?'open':'closed'); }
+}
+
+/* ---------- IHSG detail: pro dashboard ---------- */
+const WATCHLIST = [
+  {sym:'BBCA.JK', name:'Bank Central Asia'}, {sym:'BBRI.JK', name:'Bank Rakyat Indonesia'},
+  {sym:'BMRI.JK', name:'Bank Mandiri'},      {sym:'BBNI.JK', name:'Bank Negara Indonesia'},
+  {sym:'BRIS.JK', name:'Bank Syariah Indonesia'}, {sym:'ARTO.JK', name:'Bank Jago'},
+  {sym:'TLKM.JK', name:'Telkom Indonesia'},  {sym:'ASII.JK', name:'Astra International'},
+  {sym:'UNTR.JK', name:'United Tractors'},   {sym:'ADRO.JK', name:'Alamtri Resources'},
+  {sym:'INDF.JK', name:'Indofood Sukses'},   {sym:'ICBP.JK', name:'Indofood CBP'},
+  {sym:'SMGR.JK', name:'Semen Indonesia'},   {sym:'INTP.JK', name:'Indocement'},
+  {sym:'ANTM.JK', name:'Aneka Tambang'},     {sym:'INCO.JK', name:'Vale Indonesia'},
+  {sym:'MDKA.JK', name:'Merdeka Copper'},    {sym:'AMMN.JK', name:'Amman Mineral'},
+  {sym:'PGAS.JK', name:'Perusahaan Gas Negara'}, {sym:'GOTO.JK', name:'GoTo Gojek Tokopedia'},
+  {sym:'BUKA.JK', name:'Bukalapak'},         {sym:'BREN.JK', name:'Barito Renewables'},
+  {sym:'CUAN.JK', name:'Petrindo Kreasi'},   {sym:'DSSA.JK', name:'Dian Swastatika Sentosa'},
+];
+
+const fmtVol = v => v==null ? '—'
+  : v>=1e9 ? (v/1e9).toLocaleString('id-ID',{maximumFractionDigits:2}) + ' M sh'
+  : v>=1e6 ? (v/1e6).toLocaleString('id-ID',{maximumFractionDigits:1}) + ' jt sh'
+  : fmt(v,0) + ' sh';
+const fmtRp = v => v==null ? '—'
+  : 'Rp ' + (v>=1e9 ? (v/1e9).toLocaleString('id-ID',{maximumFractionDigits:2}) + ' M'
+  : v>=1e6 ? (v/1e6).toLocaleString('id-ID',{maximumFractionDigits:1}) + ' jt' : fmt(v,0));
+
+function openIhsgDetail(){
+  $('detail').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  paintDetailSummary();
+  loadMovers();
+  drawChart();
+}
+function closeIhsgDetail(){
+  $('detail').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function paintDetailSummary(){
+  const st = state.ihsg;
+  if (!st || st.price==null) return;
+  $('d-price').textContent = fmt(st.price, 2);
+  const ch = $('d-chg');
+  ch.textContent = fmtPct(st.chgPct);
+  ch.className = 'chg mono ' + (st.chgPct>0 ? 'up' : st.chgPct<0 ? 'down' : 'flat');
+  const diff = st.price - st.prev, pe = $('d-pts');
+  pe.textContent = (diff>0?'+':diff<0?'−':'') + fmt(Math.abs(diff),2) + ' pts';
+  pe.style.color = st.chgPct>0 ? 'var(--up)' : st.chgPct<0 ? 'var(--down)' : 'var(--mut)';
+  $('d-time').textContent = 'Data per ' +
+    new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) + ' WIB · tertunda ±15 mnt';
+  const lo = st.dayLow, hi = st.dayHigh;
+  $('d-low-l').textContent = 'L ' + fmt(lo,2);
+  $('d-high-l').textContent = 'H ' + fmt(hi,2);
+  const pct = v => (hi>lo && v!=null) ? Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100)) : 50;
+  $('d-marker').style.left = pct(st.price) + '%';
+  $('d-marker').style.background = st.chgPct>=0 ? 'var(--up)' : 'var(--down)';
+  $('d-prevmark').style.left = pct(st.prev) + '%';
+  $('d-open').textContent = fmt(st.dayOpen,2);
+  $('d-prev').textContent = fmt(st.prev,2);
+  $('d-high').textContent = fmt(hi,2);
+  $('d-low').textContent = fmt(lo,2);
+  $('d-vol').textContent = fmtVol(st.volume);
+  const open = idxOpen(), b = $('d-live');
+  b.textContent = open ? '● LIVE' : 'CLOSED';
+  b.className = 'livebadge ' + (open ? 'open' : 'closed');
+}
+
+async function fetchIhsgSeries(){
+  const r = await fetch(YQ('^JKSE'), {cache:'no-store'});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  const res = d.chart.result[0], m = res.meta;
+  const ts = res.timestamp || [], cl = (res.indicators.quote[0] || {}).close || [];
+  const pts = [];
+  for (let i=0;i<ts.length;i++) if (cl[i]!=null) pts.push({t:ts[i]*1000, c:cl[i]});
+  if (!pts.length) throw new Error('empty series');
+  let prev = (m.chartPreviousClose!=null ? m.chartPreviousClose : m.previousClose);
+  try { const dp = await fetchDailyPrev('^JKSE'); if (dp!=null) prev = dp; } catch(e){}
+  return {pts, prev};
+}
+
+async function drawChart(){
+  const cv = $('d-chart');
+  const w = cv.clientWidth || 320, h = cv.clientHeight || 230;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = w*dpr; cv.height = h*dpr;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#8b98ad'; ctx.font = '12px sans-serif';
+  ctx.fillText('memuat grafik…', 14, 26);
+  try{
+    const {pts, prev} = await fetchIhsgSeries();
+    renderChart(ctx, w, h, pts, prev);
+    // Yahoo meta has no open for indices — use the first intraday point
+    if (state.ihsg && state.ihsg.dayOpen==null && pts.length)
+      $('d-open').textContent = fmt(pts[0].c, 2);
+  }catch(e){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#8b98ad'; ctx.fillText('grafik tidak tersedia', 14, 26);
+  }
+}
+
+function renderChart(ctx, w, h, pts, prev){
+  const padL=8, padR=62, padT=14, padB=22;
+  const iw = w-padL-padR, ih = h-padT-padB;
+  let mn = Infinity, mx = -Infinity;
+  pts.forEach(p=>{ mn=Math.min(mn,p.c); mx=Math.max(mx,p.c); });
+  mn = Math.min(mn, prev); mx = Math.max(mx, prev);
+  const span = (mx-mn) || 1, pad = span*0.08;
+  mn -= pad; mx += pad;
+  const n = pts.length;
+  const X = i => padL + iw*i/(n-1);
+  const Y = v => padT + ih*(1-(v-mn)/(mx-mn));
+  const up = pts[n-1].c >= prev;
+  const col = up ? '#34d399' : '#f87171';
+  ctx.lineWidth = 1;
+  // grid + price labels
+  ctx.font = '10px ui-monospace,monospace';
+  for (let g=0; g<=4; g++){
+    const v = mn + (mx-mn)*g/4, y = Y(v);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    ctx.fillStyle = '#8b98ad';
+    ctx.fillText(fmt(v,0), w-padR+6, y+3);
+  }
+  // prev-close dashed reference
+  ctx.setLineDash([4,4]); ctx.strokeStyle = 'rgba(139,152,173,.65)';
+  ctx.beginPath(); ctx.moveTo(padL,Y(prev)); ctx.lineTo(w-padR,Y(prev)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#8b98ad';
+  ctx.fillText('prev', w-padR+6, Y(prev)-5);
+  // area fill
+  const grad = ctx.createLinearGradient(0,padT,0,padT+ih);
+  grad.addColorStop(0, up ? 'rgba(52,211,153,.32)' : 'rgba(248,113,113,.32)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.beginPath(); ctx.moveTo(X(0), Y(pts[0].c));
+  pts.forEach((p,i)=>ctx.lineTo(X(i), Y(p.c)));
+  ctx.lineTo(X(n-1), padT+ih); ctx.lineTo(X(0), padT+ih); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  // line
+  ctx.beginPath(); ctx.moveTo(X(0), Y(pts[0].c));
+  pts.forEach((p,i)=>ctx.lineTo(X(i), Y(p.c)));
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  // last point
+  ctx.beginPath(); ctx.arc(X(n-1), Y(pts[n-1].c), 3.5, 0, 7);
+  ctx.fillStyle = col; ctx.fill();
+  // x labels (WIB)
+  ctx.fillStyle = '#8b98ad';
+  for (let k=0;k<5;k++){
+    const i = Math.round(k*(n-1)/4);
+    let hh='--', mm='--';
+    try{
+      const parts = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date(pts[i].t));
+      hh = parts.find(p=>p.type==='hour').value; mm = parts.find(p=>p.type==='minute').value;
+    }catch(e){}
+    const label = hh+'.'+mm, x = X(i);
+    ctx.fillText(label, Math.min(Math.max(x-14, padL), w-padR-32), h-6);
+  }
+}
+
+/* market-wide movers via investing.com (server-rendered table, no key, no cloak needed) */
+function parsePctId(s){
+  const t = String(s).trim(), neg = t.startsWith('-');
+  const v = parseFloat(t.replace(/[^0-9,]/g,'').replace(',','.'));
+  return isNaN(v) ? 0 : (neg ? -v : v);
+}
+async function fetchInvestingTable(url, desc){
+  let status='?', kb=0, trs=0;
+  try{
+    const r = await fetch(url, {
+      cache:'no-store',
+      headers:{
+        'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language':'id-ID,id;q=0.9,en;q=0.8',
+        'Referer':'https://id.investing.com/',
+        'Upgrade-Insecure-Requests':'1',
+      }
+    });
+    status = r.status;
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const html = await r.text();
+    kb = Math.round(html.length/1024);
+    const all = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
+    trs = all.length;
+    const rows = [];
+    for (const tr of all){
+      const txts = [], re = />([^<>]+)</g;
+      let m;
+      while ((m = re.exec(tr))){ const t = m[1].trim(); if (t) txts.push(t); }
+      // row shape: [name, HH:MM:SS, '|', TICKER, price, ±chg%] — no hashed class names used
+      if (txts.length>=6 && /^\d{2}:\d{2}:\d{2}$/.test(txts[1]) && txts[2]==='|' &&
+          /^[A-Z0-9]{2,6}$/.test(txts[3]) && /^[+-]/.test(txts[5])){
+        rows.push({name:txts[0], time:txts[1], sym:txts[3], price:txts[4], chg:parsePctId(txts[5])});
+      }
+    }
+    rows.sort((a,b)=> desc ? b.chg-a.chg : a.chg-b.chg);
+    return {rows, diag:`HTTP ${status} · ${kb}KB · ${trs} tr · ${rows.length} ok`};
+  }catch(e){
+    return {rows:[], diag:`${e.message} · HTTP ${status} · ${kb}KB · ${trs} tr`};
+  }
+}
+
+const moverRowHtml = (m,i) =>
+  `<div class="mrow"><span class="rk mono">${i+1}</span>` +
+  `<span class="tk mono">${m.sym}</span><span class="nm">${m.name}</span>` +
+  `<span class="pr"><div class="p mono">${m.price}</div>` +
+  `<div class="c mono ${m.chg>=0?'u':'d'}">${fmtPct(m.chg)}</div></span></div>`;
+
+async function loadWatchlistRows(){
+  const results = await Promise.allSettled(WATCHLIST.map(async w=>{
+    const r = await fetch(YQ(w.sym), {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const m = (await r.json()).chart.result[0].meta;
+    const price = m.regularMarketPrice;
+    const prev = (m.chartPreviousClose!=null ? m.chartPreviousClose : m.previousClose);
+    if (price==null || prev==null) throw new Error('empty');
+    return {sym:w.sym.replace('.JK',''), name:w.name, price,
+            chg:(price-prev)/prev*100, vol:m.regularMarketVolume||0};
+  }));
+  return results.filter(r=>r.status==='fulfilled').map(r=>r.value);
+}
+
+async function loadMovers(){
+  $('d-gainers').innerHTML = '<div class="skel">memuat…</div>';
+  $('d-losers').innerHTML = '<div class="skel">memuat…</div>';
+  $('d-active').innerHTML = '<div class="skel">memuat…</div>';
+  $('d-sectors').innerHTML = '<div class="skel">memuat…</div>';
+  $('d-sector-sum').textContent = '';
+  $('dtape').innerHTML = '<span class="titem">memuat…</span>';
+  // sequential (less burst-like), then watchlist for breadth/active
+  const g = await fetchInvestingTable('https://id.investing.com/equities/top-stock-gainers', true);
+  const l = await fetchInvestingTable('https://id.investing.com/equities/top-stock-losers', false);
+  const watchRows = await loadWatchlistRows();
+  const invOk = g.rows.length>0 && l.rows.length>0;
+  if (invOk){
+    $('d-gainers').innerHTML = g.rows.slice(0,10).map(moverRowHtml).join('');
+    $('d-losers').innerHTML = l.rows.slice(0,10).map(moverRowHtml).join('');
+  } else if (watchRows.length){
+    const byChg = watchRows.slice().sort((a,b)=>b.chg-a.chg);
+    const norm = m => ({sym:m.sym, name:m.name, price:fmt(m.price,0), chg:m.chg});
+    $('d-gainers').innerHTML = byChg.slice(0,10).map((m,i)=>moverRowHtml(norm(m),i)).join('');
+    $('d-losers').innerHTML = byChg.slice().reverse().slice(0,10).map((m,i)=>moverRowHtml(norm(m),i)).join('');
+  } else {
+    $('d-gainers').innerHTML = '<div class="skel">gagal memuat data</div>';
+    $('d-losers').innerHTML = ''; $('d-active').innerHTML = '';
+    return;
+  }
+  $('d-note').innerHTML = invOk
+    ? 'Top movers seluruh emiten IDX · Investing.com (tertunda)'
+    : 'Investing.com tidak terjangkau — 24 saham pantauan · Yahoo (tertunda)';
+  // breadth + most active + running price tape from the 24-stock watchlist
+  if (!watchRows.length) return;
+  updateDetailTape(watchRows);
+  renderSectors(watchRows);
+  let up=0, down=0, flat=0;
+  watchRows.forEach(r=>{ r.chg>0.05 ? up++ : r.chg<-0.05 ? down++ : flat++; });
+  const tot = watchRows.length || 1;
+  $('b-up').style.width = (up/tot*100)+'%';
+  $('b-flat').style.width = (flat/tot*100)+'%';
+  $('b-down').style.width = (down/tot*100)+'%';
+  $('b-up-n').textContent = up; $('b-flat-n').textContent = flat; $('b-down-n').textContent = down;
+  const act = watchRows.slice().sort((a,b)=>b.price*b.vol - a.price*a.vol).slice(0,5);
+  $('d-active').innerHTML = act.map((m,i)=>
+    `<div class="mrow"><span class="rk mono">${i+1}</span>` +
+    `<span class="tk mono">${m.sym}</span><span class="nm">${m.name}</span>` +
+    `<span class="pr"><div class="p mono">${fmtRp(m.price*m.vol)}</div>` +
+    `<div class="c mono ${m.chg>=0?'u':'d'}">${fmtPct(m.chg)}</div></span></div>`
+  ).join('');
+}
+/* ---------- Semua Emiten: full IDX list (investing.com) + per-stock detail ---------- */
+let ALL = [], STK_SORT = 'g', STK_Q = '';
+
+async function fetchAllStocks(){
+  const r = await fetch('https://id.investing.com/equities/indonesia', {
+    cache:'no-store',
+    headers:{'Accept':'text/html,application/xhtml+xml','Accept-Language':'id-ID,id;q=0.9'}
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const html = await r.text();
+  const trs = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
+  const rows = [];
+  for (const tr of trs){
+    const txts = [], re = />([^<>]+)</g;
+    let m;
+    while ((m = re.exec(tr))){ const t = m[1].trim(); if (t) txts.push(t); }
+    // row shape: [name, HH:MM:SS|DD/MM, '|', TICKER, price, ±pts, ±pct]
+    if (txts.length>=7 && txts[2]==='|' && /^[A-Z0-9]{2,6}$/.test(txts[3]) &&
+        (/^\d{2}:\d{2}:\d{2}$/.test(txts[1]) || /^\d{2}\/\d{2}$/.test(txts[1])) &&
+        /^[+-]?[\d.,]+$/.test(txts[6])){
+      const price = parsePctId(txts[4]), pts = parsePctId(txts[5]);
+      rows.push({name:txts[0], time:txts[1], sym:txts[3], priceTxt:txts[4],
+                 price, pts, chg:parsePctId(txts[6]),
+                 prev:(price!=null && pts!=null) ? price-pts : null});
+    }
+  }
+  return rows;
+}
+
+function renderStockList(){
+  let rows = ALL.slice();
+  const q = STK_Q.trim().toUpperCase();
+  if (q) rows = rows.filter(r => r.sym.includes(q) || r.name.toUpperCase().includes(q));
+  if (STK_SORT==='g') rows.sort((a,b)=>b.chg-a.chg);
+  else if (STK_SORT==='l') rows.sort((a,b)=>a.chg-b.chg);
+  else if (STK_SORT==='n') rows.sort((a,b)=>a.sym.localeCompare(b.sym));
+  else rows.sort((a,b)=>b.price-a.price);
+  $('stock-list').innerHTML = rows.length ? rows.map(r =>
+    `<div class="stk-row" data-sym="${r.sym}"><span class="tk mono">${r.sym}</span>` +
+    `<span class="nm">${r.name}</span><span class="pr"><div class="p mono">${r.priceTxt}</div>` +
+    `<div class="c mono ${r.chg>0?'u':r.chg<0?'d':''}">${fmtPct(r.chg)}</div></span></div>`
+  ).join('') : '<div class="skel">tidak ada emiten yang cocok</div>';
+  const up = ALL.filter(r=>r.chg>0).length, dn = ALL.filter(r=>r.chg<0).length;
+  $('stocks-sum').textContent =
+    `${ALL.length} emiten · ${up} naik · ${dn} turun · ${ALL.length-up-dn} tetap` + (q ? ` · tampil ${rows.length}` : '');
+}
+
+async function openStocks(){
+  $('stocks').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const open = idxOpen(), b = $('stocks-live');
+  b.textContent = open ? '● LIVE' : 'CLOSED'; b.className = 'livebadge ' + (open?'open':'closed');
+  if (!ALL.length){
+    $('stock-list').innerHTML = '<div class="skel">memuat 900+ emiten… (±3 MB, sebentar)</div>';
+    try { ALL = await fetchAllStocks(); }
+    catch(e){ $('stock-list').innerHTML = '<div class="skel">gagal memuat daftar emiten</div>'; return; }
+    if (!ALL.length){ $('stock-list').innerHTML = '<div class="skel">daftar kosong — coba lagi nanti</div>'; return; }
+  }
+  renderStockList();
+}
+function closeStocks(){
+  $('stocks').classList.remove('open');
+  if (!$('detail').classList.contains('open')) document.body.style.overflow = '';
+}
+
+/* per-stock detail (Yahoo .JK chart + daily-bar prev) */
+let CUR_SYM = null;
+function openStockDetail(sym){
+  CUR_SYM = sym;
+  const info = ALL.find(r=>r.sym===sym);
+  $('sdetail').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  $('s-ticker').textContent = sym;
+  $('s-name').textContent = info ? info.name : sym + ' · IDX';
+  const open = idxOpen(), b = $('s-live');
+  b.textContent = open ? '● LIVE' : 'CLOSED'; b.className = 'livebadge ' + (open?'open':'closed');
+  if (info){
+    $('s-price').textContent = info.priceTxt;
+    const ch = $('s-chg');
+    ch.textContent = fmtPct(info.chg);
+    ch.className = 'chg mono ' + (info.chg>0 ? 'up' : info.chg<0 ? 'down' : 'flat');
+    $('s-pts').textContent = (info.pts>0?'+':info.pts<0?'−':'') + fmt(Math.abs(info.pts),0) + ' pts';
+    if (info.prev!=null) $('s-prev').textContent = fmt(info.prev,0);
+  }
+  loadStockDetail(sym);
+}
+function closeStockDetail(){ $('sdetail').classList.remove('open'); }
+
+async function loadStockDetail(sym){
+  try{
+    const [q, dp] = await Promise.all([
+      fetch(YQ(sym + '.JK'), {cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }),
+      fetchDailyPrev(sym + '.JK').catch(()=>null),
+    ]);
+    if (CUR_SYM !== sym) return; // user already opened another stock
+    const res = q.chart.result[0], m = res.meta;
+    const price = m.regularMarketPrice;
+    const prev = dp!=null ? dp : (m.chartPreviousClose!=null ? m.chartPreviousClose : m.previousClose);
+    if (price==null || prev==null) throw new Error('empty');
+    const chg = (price-prev)/prev*100, diff = price-prev;
+    $('s-price').textContent = fmt(price,0);
+    const ch = $('s-chg');
+    ch.textContent = fmtPct(chg);
+    ch.className = 'chg mono ' + (chg>0 ? 'up' : chg<0 ? 'down' : 'flat');
+    $('s-pts').textContent = (diff>0?'+':diff<0?'−':'') + fmt(Math.abs(diff),0) + ' pts';
+    $('s-pts').style.color = chg>0 ? 'var(--up)' : chg<0 ? 'var(--down)' : 'var(--mut)';
+    $('s-time').textContent = 'Data per ' + new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) + ' WIB · tertunda ±15 mnt';
+    const q0 = res.indicators.quote[0] || {};
+    const hi = m.regularMarketDayHigh, lo = m.regularMarketDayLow;
+    $('s-low-l').textContent = 'L ' + fmt(lo,0);
+    $('s-high-l').textContent = 'H ' + fmt(hi,0);
+    const pct = v => (hi>lo && v!=null) ? Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100)) : 50;
+    $('s-marker').style.left = pct(price) + '%';
+    $('s-marker').style.background = chg>=0 ? 'var(--up)' : 'var(--down)';
+    $('s-prevmark').style.left = pct(prev) + '%';
+    const ts = res.timestamp || [], cl = q0.close || [];
+    const ptsArr = [];
+    for (let i=0;i<ts.length;i++) if (cl[i]!=null) ptsArr.push({t:ts[i]*1000, c:cl[i]});
+    let dayOpen = m.regularMarketOpen;
+    if (dayOpen==null && ptsArr.length) dayOpen = ptsArr[0].c;
+    $('s-open').textContent = fmt(dayOpen,0);
+    $('s-prev').textContent = fmt(prev,0);
+    $('s-high').textContent = fmt(hi,0);
+    $('s-low').textContent = fmt(lo,0);
+    let vol = m.regularMarketVolume;
+    if (vol==null) vol = (q0.volume||[]).reduce((a,v)=>a+(v||0),0) || null;
+    if (vol===0) vol = null;
+    $('s-vol').textContent = fmtVol(vol);
+    drawStockChart(ptsArr, prev);
+  }catch(e){
+    if (CUR_SYM === sym) $('s-time').textContent = 'gagal memuat data Yahoo untuk ' + sym;
+  }
+}
+
+function drawStockChart(pts, prev){
+  const cv = $('s-chart');
+  if (!cv || !pts.length) return;
+  const w = cv.clientWidth || 320, h = cv.clientHeight || 230;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = w*dpr; cv.height = h*dpr;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  renderChart(ctx, w, h, pts, prev);
+}
+
+/* unified back handling for the Android bridge */
+window.__closeTop = function(){
+  if ($('sdetail').classList.contains('open')){ closeStockDetail(); return 'closed'; }
+  if ($('stocks').classList.contains('open')){ closeStocks(); return 'closed'; }
+  if ($('detail').classList.contains('open')){ closeIhsgDetail(); return 'closed'; }
+  return 'none';
+};
+
+$('btnStocks1').onclick = openStocks;
+$('btnStocks2').onclick = openStocks;
+$('btnStocksBack').onclick = closeStocks;
+$('btnSBack').onclick = closeStockDetail;
+$('stock-q').addEventListener('input', e=>{ STK_Q = e.target.value; renderStockList(); });
+document.querySelectorAll('.chip').forEach(c => c.onclick = ()=>{
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); STK_SORT = c.dataset.sort; renderStockList();
+});
+$('stock-list').addEventListener('click', e=>{
+  const row = e.target.closest('.stk-row');
+  if (row) openStockDetail(row.dataset.sym);
+});
+
+$('btnBack').onclick = closeIhsgDetail;
+$('btnDRefresh').onclick = ()=>{ paintDetailSummary(); loadMovers(); drawChart(); };
+window.addEventListener('resize', ()=>{
+  if ($('detail').classList.contains('open')) drawChart();
+});
+
+/* ---------- clock / net / toast ---------- */
+function tickClock(){
+  try{
+    $('clock').textContent = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+  }catch(e){}
+  updateLive();
+}
+function setNet(ok){
+  $('netdot').className = 'dot ' + (ok?'live':'err');
+  $('netlabel').textContent = ok ? ('updated ' + new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})) : 'offline / error';
+}
+let toastT=null;
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+/* ---------- refresh loop ---------- */
+function schedule(){
+  clearInterval(timer); countdown = refreshSec;
+  timer = setInterval(()=>{
+    countdown--;
+    $('countdown').textContent = '⟳ ' + countdown + 's';
+    if (countdown<=0){ countdown = refreshSec; fetchData(); }
+  }, 1000);
+}
+
+$('btnRefresh').onclick = ()=>{ countdown = refreshSec; fetchData(); };
+$('selInterval').onchange = e => { refreshSec = +e.target.value; schedule(); };
+
+buildCards();
+/* ---------- Makro: BPS 2026 vs 2025 + health indicators ---------- */
+/* v: latest 2026 value, v2025: comparable 2025 value. deltaKind 'pp' = point
+   difference, 'pct' = percent change. Filled from BPS releases. */
+const MACRO = [
+  {id:'gdp',        name:'Pertumbuhan Ekonomi', sub:'PDB', unit:'% YoY', dec:2, deltaKind:'pp',
+   period:'Q2 2026', v:5.29, p2025:'Q2 2025', v2025:5.12, src:'BPS',
+   note:'H1 2026 tumbuh 5,45% c-to-c, masih ditopang konsumsi.'},
+  {id:'inflasi',    name:'Inflasi', sub:'IHK', unit:'% YoY', dec:2, deltaKind:'pp',
+   period:'Sep 2026', v:3.28, p2025:'Sep 2025', v2025:2.65, src:'BPS',
+   note:'Masih dalam sasaran BI 1,5–3,5%, tapi mendekati batas atas (volatile food 5,03%).'},
+  {id:'tpt',        name:'Pengangguran', sub:'TPT', unit:'%', dec:2, deltaKind:'pp',
+   period:'Feb 2026', v:4.68, p2025:'Feb 2025', v2025:4.76, src:'BPS',
+   note:'7,24 jt penganggur dari 154,91 jt angkatan kerja. Sakernas Agu 2026 belum rilis.'},
+  {id:'kemiskinan', name:'Kemiskinan', sub:'% penduduk', unit:'%', dec:2, deltaKind:'pp',
+   period:'Mar 2026', v:8.07, p2025:'Mar 2025', v2025:8.47, src:'BPS',
+   note:'22,93 jt jiwa. Turun 0,40 pp dalam setahun.'},
+  {id:'neraca',     name:'Neraca Perdagangan', sub:'', unit:'miliar US$', dec:2, deltaKind:'pp',
+   period:'Agu 2026', v:3.55, p2025:'Agu 2025', v2025:5.57, src:'BPS',
+   note:'Surplus menyusut: impor +19,84% vs ekspor +4,74% (Jan–Agu). Defisit Mei 2026 memutus 72 bulan surplus beruntun.'},
+  {id:'cadev',      name:'Cadangan Devisa', sub:'', unit:'miliar US$', dec:1, deltaKind:'pp',
+   period:'Sep 2026', v:146.3, p2025:'Des 2025', v2025:156.5, src:'BI',
+   note:'Turun US$10,2 M dari Des 2025, tapi masih 5,3 bulan impor (di atas standar 3 bulan).'},
+  {id:'ipm',        name:'Indeks Pembangunan Manusia', sub:'IPM', unit:'indeks', dec:2, deltaKind:'pp',
+   period:'2025', v:75.90, p2025:'2024', v2025:75.02, src:'BPS',
+   note:'Kategori "tinggi". UHH 74,47 tahun. IPM 2026 rilis Nov 2026.'},
+  {id:'gini',       name:'Ketimpangan', sub:'Rasio Gini', unit:'', dec:3, deltaKind:'pp',
+   period:'Mar 2026', v:0.368, p2025:'Mar 2025', v2025:0.375, src:'BPS',
+   note:'Membaik YoY, tapi naik tipis vs Sep 2025 (0,363).'},
+  {id:'ntp',        name:'Nilai Tukar Petani', sub:'NTP', unit:'indeks', dec:2, deltaKind:'pp',
+   period:'Sep 2026', v:131.11, p2025:'Sep 2025', v2025:124.36, src:'BPS',
+   note:'>100 = petani surplus. Naik 1,49% MoM.'},
+  {id:'wisman',     name:'Kunjungan Wisman', sub:'', unit:'juta', dec:2, deltaKind:'pct',
+   period:'Agu 2026', v:1.60, p2025:'Agu 2025', v2025:1.51, src:'BPS',
+   note:'Jan–Agu 2026: 10,58 jt (+5,38%), tertinggi sejak 2020.'},
+];
+
+const HLABEL = {g:'SEHAT', y:'WASPADA', r:'SAKIT'};
+
+function healthOf(m){
+  const v = m.v, p = m.v2025;
+  if (v == null) return null;
+  switch(m.id){
+    case 'gdp':        return v>=5 ? 'g' : v>=4 ? 'y' : 'r';
+    case 'inflasi': {
+      let h = (v>=1.5 && v<=3.5) ? 'g' : (v<0.5 || v>5) ? 'r' : 'y';
+      if (p!=null && v-p>0.5 && h==='g') h = 'y'; // accelerating toward the ceiling
+      return h;
+    }
+    case 'tpt': {
+      let h = v<5 ? 'g' : v<=6 ? 'y' : 'r';
+      if (p!=null && v-p>0.3) h = h==='g' ? 'y' : 'r';
+      return h;
+    }
+    case 'kemiskinan': if (p==null) return 'y'; return v<p-0.05 ? 'g' : v>p+0.05 ? 'r' : 'y';
+    case 'neraca': {
+      if (v<=0) return v>=-2 ? 'y' : 'r';
+      if (p!=null && p>0 && v<p*0.7) return 'y'; // surplus shrinking fast
+      return 'g';
+    }
+    case 'cadev': {
+      let h = v>=140 ? 'g' : v>=130 ? 'y' : 'r';
+      if (p!=null && v<p-5 && h==='g') h = 'y'; // bleeding reserves
+      return h;
+    }
+    case 'ipm':        if (p==null) return 'y'; return v>p ? 'g' : v<p ? 'r' : 'y';
+    case 'gini':       return v<0.38 ? 'g' : v<=0.41 ? 'y' : 'r';
+    case 'ntp':        return v>100 ? 'g' : v>=95 ? 'y' : 'r';
+    case 'wisman':     if (p==null || !p) return 'y';
+                       const gr = (v-p)/p*100; return gr>10 ? 'g' : gr>=0 ? 'y' : 'r';
+  }
+  return 'y';
+}
+
+function fmtId(v, dec){
+  if (v==null || isNaN(v)) return '—';
+  return v.toFixed(dec).replace('.', ',');
+}
+
+function deltaHtml(m){
+  if (m.v==null || m.v2025==null) return 'perbandingan 2025: —';
+  let d, txt;
+  if (m.deltaKind==='pct'){ d = (m.v-m.v2025)/m.v2025*100; txt = fmtId(Math.abs(d),1) + '%'; }
+  else { d = m.v-m.v2025; txt = fmtId(Math.abs(d),m.dec) + ' pp'; }
+  const arrow = d>0.0001 ? '▲' : d<-0.0001 ? '▼' : '▬';
+  const cls = d>0.0001 ? 'u' : d<-0.0001 ? 'd' : '';
+  const sign = d>0.0001 ? '+' : d<-0.0001 ? '−' : '';
+  return `${m.p2025}: ${fmtId(m.v2025,m.dec)}${m.unit?' '+m.unit:''} · ` +
+         `<span class="c ${cls}">${arrow} ${sign}${txt}</span>`;
+}
+
+function renderMaster(){
+  const scored = MACRO.filter(m => m.v != null);
+  const n = scored.length;
+  if (!n){
+    $('master').innerHTML = '<div class="skel">⏳ mengumpulkan data BPS…</div>';
+    return;
+  }
+  const hs = scored.map(m => healthOf(m));
+  const g = hs.filter(h=>h==='g').length, y = hs.filter(h=>h==='y').length, r = hs.filter(h=>h==='r').length;
+  const score = Math.round((2*g + y) / (2*n) * 100);
+  const st = score>=75 ? 'g' : score>=50 ? 'y' : 'r';
+  const color = st==='g' ? 'var(--up)' : st==='y' ? '#eab308' : 'var(--down)';
+  const L = Math.PI*80, arc = (score/100*L).toFixed(1);
+  $('master').innerHTML =
+    `<div class="mlabel">KESEHATAN EKONOMI INDONESIA</div>` +
+    `<svg viewBox="0 0 200 112" style="width:210px; max-width:70vw; margin:4px auto 0; display:block;">` +
+    `<path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="#1a2233" stroke-width="15" stroke-linecap="round"/>` +
+    `<path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="${color}" stroke-width="15" stroke-linecap="round" ` +
+    `stroke-dasharray="${arc} ${L.toFixed(1)}"/>` +
+    `<text x="100" y="88" text-anchor="middle" fill="var(--txt)" font-size="30" font-weight="800" class="mono">${score}</text>` +
+    `<text x="100" y="106" text-anchor="middle" fill="var(--mut)" font-size="10">/ 100</text></svg>` +
+    `<div><span class="mstatus ${st}">${st==='g'?'✓ SEHAT':st==='y'?'⚠ WASPADA':'✕ SAKIT'}</span></div>` +
+    `<div class="mbar"><div style="width:${(g/n*100).toFixed(1)}%; background:var(--up)"></div>` +
+    `<div style="width:${(y/n*100).toFixed(1)}%; background:#eab308"></div>` +
+    `<div style="width:${(r/n*100).toFixed(1)}%; background:var(--down)"></div></div>` +
+    `<div class="mbreak"><span><b class="c u">${g}</b> sehat</span>` +
+    `<span><b style="color:#eab308">${y}</b> waspada</span>` +
+    `<span><b class="c d">${r}</b> sakit</span></div>`;
+}
+
+function renderMacro(){
+  renderMaster();
+  const grid = $('macro-grid');
+  if (!MACRO.some(m => m.v != null)){
+    grid.innerHTML = '';
+    $('macro-note').textContent = 'Data diambil dari rilis resmi BPS 2026.';
+    return;
+  }
+  grid.innerHTML = MACRO.map(m => {
+    const h = healthOf(m);
+    const badge = h ? `<span class="hbadge ${h}">${HLABEL[h]}</span>` : '';
+    const dot = h ? `<span class="hdot ${h}"></span>` : `<span class="hdot" style="background:var(--mut)"></span>`;
+    return `<div class="mcard">` +
+      `<div class="mrow1">${dot}<span class="mname">${m.name}${m.sub?` <span style="color:var(--mut); font-weight:400; font-size:12px">· ${m.sub}</span>`:''}</span>` +
+      `<span class="mperiod mono">${m.period}</span></div>` +
+      `<div class="mrow2"><span class="mval mono">${fmtId(m.v, m.dec)}</span>` +
+      `<span class="munit">${m.unit}</span>${badge}</div>` +
+      `<div class="mrow3">${deltaHtml(m)}</div>` +
+      `<div class="mnote">${m.note} Sumber: ${m.src}.</div></div>`;
+  }).join('');
+  const dated = MACRO.filter(m => m.v != null).length;
+  $('macro-note').textContent =
+    `${dated} indikator · data rilis resmi BPS 2026 vs periode sama 2025 · diperbarui saat rilis BPS terbaru`;
+}
+
+/* tab switching */
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  const makro = t.dataset.tab === 'makro';
+  $('pane-makro').style.display = makro ? '' : 'none';
+  $('pane-pasar').style.display = makro ? 'none' : '';
+  window.scrollTo(0, 0);
+});
+
+renderMacro();
+
+tickClock(); setInterval(tickClock, 1000);
+schedule(); fetchData();
+</script>
+</body>
+</html>
