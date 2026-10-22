@@ -222,7 +222,7 @@
 <main>
 <div id="pane-makro">
   <div class="sec">🏛️ Kesehatan Ekonomi Indonesia</div>
-  <div class="dsub" id="macro-sub">Data resmi BPS · rilis terbaru per Okt 2026 vs periode sama 2025</div>
+  <div class="dsub" id="macro-sub">Data BPS, S&P Global &amp; Kemenperin · rilis terbaru per Okt 2026 vs periode sama 2025</div>
   <div class="master" id="master"></div>
   <div id="macro-grid"></div>
   <div class="dnote" id="macro-note"></div>
@@ -1159,6 +1159,12 @@ const MACRO = [
   {id:'wisman',     name:'Kunjungan Wisman', sub:'', unit:'juta', dec:2, deltaKind:'pct',
    period:'Agu 2026', v:1.60, p2025:'Agu 2025', v2025:1.51, src:'BPS',
    note:'Jan–Agu 2026: 10,58 jt (+5,38%), tertinggi sejak 2020.'},
+  {id:'pmi',        name:'PMI Manufaktur', sub:'S&P Global', unit:'indeks', dec:1, deltaKind:'pp',
+   period:'Sep 2026', v:52.4, p2025:'Sep 2025', v2025:50.4, src:'S&P Global',
+   note:'>50 = ekspansi. Tertinggi sejak Feb 2026; pesanan ekspor tercepat sejak Mei 2022.'},
+  {id:'iki',        name:'Kepercayaan Industri', sub:'IKI', unit:'indeks', dec:2, deltaKind:'pp',
+   period:'Sep 2026', v:51.93, p2025:'Sep 2025', v2025:53.02, src:'Kemenperin',
+   note:'>50 = ekspansi. 15 dari 23 subsektor ekspansif (84,4% PDB industri nonmigas).'},
 ];
 
 const HLABEL = {g:'SEHAT', y:'WASPADA', r:'SAKIT'};
@@ -1194,6 +1200,8 @@ function healthOf(m){
     case 'ntp':        return v>100 ? 'g' : v>=95 ? 'y' : 'r';
     case 'wisman':     if (p==null || !p) return 'y';
                        const gr = (v-p)/p*100; return gr>10 ? 'g' : gr>=0 ? 'y' : 'r';
+    case 'pmi':
+    case 'iki':        return v>=51 ? 'g' : v>=49 ? 'y' : 'r'; // diffusion index, 50 = neutral
   }
   return 'y';
 }
