@@ -38,6 +38,7 @@
   .titem{display:inline-block; margin:0 14px; font-size:12px;}
   .titem b{font-weight:700;}
   .titem .u{color:var(--up);} .titem .d{color:var(--down);}
+  .titem .y{color:#eab308;} .titem .mut{color:var(--mut);}
   .dtape{flex:none;}
   #dtape{animation-duration:38s;}
 
@@ -103,6 +104,11 @@
   .rtrack{position:relative; height:6px; background:#1b2434; border-radius:3px;}
   .rmarker{position:absolute; top:-3px; width:12px; height:12px; border-radius:50%;
     transform:translateX(-50%); box-shadow:0 0 0 1px var(--line);}
+  .rpin{position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap;
+    font-size:10px; font-weight:700; color:var(--txt); background:#1c2536;
+    border:1px solid var(--line); padding:2px 7px; border-radius:8px;}
+  .rpin.l{right:18px;}
+  .rpin.r{left:18px;}
   .rprev{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--mut);
     opacity:.8; transform:translateX(-50%); border-radius:1px;}
   .statgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;}
@@ -272,7 +278,7 @@
       <div class="dtime mono" id="d-time"></div>
       <div class="rangebar">
         <div class="rlabels"><span id="d-low-l"></span><span class="rmid">Day Range</span><span id="d-high-l"></span></div>
-        <div class="rtrack"><div class="rprev" id="d-prevmark"></div><div class="rmarker" id="d-marker"></div></div>
+        <div class="rtrack"><div class="rprev" id="d-prevmark"></div><div class="rmarker" id="d-marker"><span class="rpin l" id="d-pin"></span></div></div>
       </div>
       <div class="statgrid">
         <div class="stat"><span>Open</span><b class="mono" id="d-open">—</b></div>
@@ -350,7 +356,7 @@
       <div class="dtime mono" id="s-time"></div>
       <div class="rangebar">
         <div class="rlabels"><span id="s-low-l"></span><span class="rmid">Day Range</span><span id="s-high-l"></span></div>
-        <div class="rtrack"><div class="rprev" id="s-prevmark"></div><div class="rmarker" id="s-marker"></div></div>
+        <div class="rtrack"><div class="rprev" id="s-prevmark"></div><div class="rmarker" id="s-marker"><span class="rpin l" id="s-pin"></span></div></div>
       </div>
       <div class="statgrid">
         <div class="stat"><span>Open</span><b class="mono" id="s-open">—</b></div>
@@ -595,12 +601,47 @@ function updateMood(){
   else { m.textContent='◆ MIXED'; m.className='mix'; }
 }
 
-function updateTape(){
+function updateMarketTape(){
   const items = SYMBOLS.filter(s=>state[s.id].price!=null).map(s => {
     const st = state[s.id], cls = st.chgPct>0?'u':st.chgPct<0?'d':'';
     return `<span class="titem"><b>${s.label}</b> ${fmt(st.price,s.digits)} <span class="${cls}">${fmtPct(st.chgPct)}</span></span>`;
   }).join('');
   $('tape').innerHTML = items + items; // duplicate for seamless loop
+}
+
+function updateMacroTape(){
+  const items = [];
+  const scored = MACRO.filter(m => m.v != null);
+  if (scored.length){
+    const hs = scored.map(m => healthOf(m));
+    const g = hs.filter(h=>h==='g').length, y = hs.filter(h=>h==='y').length;
+    const score = Math.round((2*g + y) / (2*scored.length) * 100);
+    const st = score>=75 ? 'g' : score>=50 ? 'y' : 'r';
+    items.push(`<span class="titem"><b>KESEHATAN EKONOMI</b> ` +
+      `<span class="${st==='g'?'u':st==='y'?'y':'d'}">${score}/100 ${HLABEL[st]}</span></span>`);
+  }
+  MACRO.forEach(m => {
+    if (m.v == null) return;
+    const h = healthOf(m);
+    const hcls = h==='g' ? 'u' : h==='y' ? 'y' : 'd';
+    let d = '';
+    if (m.v2025 != null){
+      const dv = m.deltaKind==='pct' ? (m.v-m.v2025)/m.v2025*100 : m.v-m.v2025;
+      const arrow = dv>0.0001 ? '▲' : dv<-0.0001 ? '▼' : '▬';
+      const sign = dv>0.0001 ? '+' : dv<-0.0001 ? '−' : '';
+      const unit = m.deltaKind==='pct' ? '%' : 'pp';
+      d = ` <span class="mut">${arrow} ${sign}${fmtId(Math.abs(dv), m.deltaKind==='pct'?1:m.dec)}${unit}</span>`;
+    }
+    items.push(`<span class="titem"><b>${m.name}</b> ` +
+      `<span class="${hcls}">${fmtId(m.v,m.dec)}${m.unit?' '+m.unit:''}</span>${d}</span>`);
+  });
+  const html = items.join('');
+  $('tape').innerHTML = html + html; // duplicate for seamless loop
+}
+
+function updateTape(){
+  const makro = $('pane-makro') && $('pane-makro').style.display !== 'none';
+  if (makro) updateMacroTape(); else updateMarketTape();
 }
 
 /* IDX-IC sector classification for the 24-stock watchlist */
@@ -705,8 +746,12 @@ function paintDetailSummary(){
   $('d-low-l').textContent = 'L ' + fmt(lo,2);
   $('d-high-l').textContent = 'H ' + fmt(hi,2);
   const pct = v => (hi>lo && v!=null) ? Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100)) : 50;
-  $('d-marker').style.left = pct(st.price) + '%';
+  const pp = pct(st.price);
+  $('d-marker').style.left = pp + '%';
   $('d-marker').style.background = st.chgPct>=0 ? 'var(--up)' : 'var(--down)';
+  const dpin = $('d-pin');
+  dpin.textContent = fmt(st.price,2);
+  dpin.className = 'rpin ' + (pp > 30 ? 'l' : 'r');
   $('d-prevmark').style.left = pct(st.prev) + '%';
   $('d-open').textContent = fmt(st.dayOpen,2);
   $('d-prev').textContent = fmt(st.prev,2);
@@ -1033,8 +1078,12 @@ async function loadStockDetail(sym){
     $('s-low-l').textContent = 'L ' + fmt(lo,0);
     $('s-high-l').textContent = 'H ' + fmt(hi,0);
     const pct = v => (hi>lo && v!=null) ? Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100)) : 50;
-    $('s-marker').style.left = pct(price) + '%';
+    const pp = pct(price);
+    $('s-marker').style.left = pp + '%';
     $('s-marker').style.background = chg>=0 ? 'var(--up)' : 'var(--down)';
+    const spin = $('s-pin');
+    spin.textContent = fmt(price,0);
+    spin.className = 'rpin ' + (pp > 30 ? 'l' : 'r');
     $('s-prevmark').style.left = pct(prev) + '%';
     const ts = res.timestamp || [], cl = q0.close || [];
     const ptsArr = [];
@@ -1292,6 +1341,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('pane-makro').style.display = makro ? '' : 'none';
   $('pane-pasar').style.display = makro ? 'none' : '';
   window.scrollTo(0, 0);
+  updateTape();
 });
 
 renderMacro();
