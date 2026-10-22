@@ -1165,6 +1165,10 @@ const MACRO = [
   {id:'iki',        name:'Kepercayaan Industri', sub:'IKI', unit:'indeks', dec:2, deltaKind:'pp',
    period:'Sep 2026', v:51.93, p2025:'Sep 2025', v2025:53.02, src:'Kemenperin',
    note:'>50 = ekspansi. 15 dari 23 subsektor ekspansif (84,4% PDB industri nonmigas).'},
+  {id:'utang',      name:'Utang Pemerintah', sub:'DJPPR Kemenkeu', unit:'% PDB', dec:2, deltaKind:'pp',
+   period:'Q2 2026', v:41.26, p2025:'2025', v2025:40.46, src:'Kemenkeu',
+   note:'Batas legal 60% PDB. Tertinggi sejak 2021; beban bunga tembus Rp 450 T.',
+   extra:'Total Rp 10.294 T · SBN 87,1% · pinjaman 12,9%'},
 ];
 
 const HLABEL = {g:'SEHAT', y:'WASPADA', r:'SAKIT'};
@@ -1202,6 +1206,7 @@ function healthOf(m){
                        const gr = (v-p)/p*100; return gr>10 ? 'g' : gr>=0 ? 'y' : 'r';
     case 'pmi':
     case 'iki':        return v>=51 ? 'g' : v>=49 ? 'y' : 'r'; // diffusion index, 50 = neutral
+    case 'utang':      return v<40 ? 'g' : v<=45 ? 'y' : 'r'; // legal cap 60% PDB
   }
   return 'y';
 }
@@ -1271,6 +1276,7 @@ function renderMacro(){
       `<div class="mrow2"><span class="mval mono">${fmtId(m.v, m.dec)}</span>` +
       `<span class="munit">${m.unit}</span>${badge}</div>` +
       `<div class="mrow3">${deltaHtml(m)}</div>` +
+      (m.extra ? `<div class="mrow3" style="color:var(--txt); font-weight:600">${m.extra}</div>` : '') +
       `<div class="mnote">${m.note} Sumber: ${m.src}.</div></div>`;
   }).join('');
   const dated = MACRO.filter(m => m.v != null).length;
