@@ -33,7 +33,7 @@ mkdir -p "$APP/keystore" "$OUT"
 if [ ! -f "$KS" ]; then
   keytool -genkeypair -keystore "$KS" -alias "$ALIAS" -keyalg RSA -keysize 2048 \
     -validity 10950 -storepass "$KSPASS" -keypass "$KSPASS" \
-    -dname "CN=Patrisius, OU=EconomicHealth" 2>/dev/null
+    -dname "CN=PatrickNoFilter, OU=EconomicHealth" 2>/dev/null
   echo "  generated new keystore (keep it — same cert needed for updates)"
 else
   echo "  reusing existing keystore"
