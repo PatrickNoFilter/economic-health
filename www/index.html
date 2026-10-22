@@ -234,6 +234,11 @@
   <div class="dnote" id="macro-note"></div>
 </div>
 <div id="pane-pasar" style="display:none">
+  <div class="mcard" id="mhealth-card">
+    <div class="mrow1"><span class="hdot" id="mh-dot"></span><span class="mname">Kesehatan Pasar</span><span class="mperiod">real-time</span></div>
+    <div class="mrow2"><span class="mval mono" id="mh-score" style="font-size:24px">—</span><span class="munit">/ 100</span><span class="hbadge" id="mh-badge">—</span></div>
+    <div class="mrow3" id="mh-detail">menunggu data pasar…</div>
+  </div>
   <div class="sec">🇮🇩 Indonesia</div>
   <div class="grid" id="sec-id"></div>
   <button class="wbtn" id="btnStocks1">📋 Semua Emiten IDX →</button>
@@ -564,7 +569,7 @@ function paintFromSnap(snap){
     st.prev = null;
     paintCard('goldidr');
   }
-  updateMood(); updateTape(); updateLive();
+  updateMood(); updateMarketHealth(); updateTape(); updateLive();
 }
 
 async function fetchData(){
@@ -592,13 +597,40 @@ async function fetchData(){
 }
 
 function updateMood(){
-  let up=0, down=0;
-  MOOD_SET.forEach(id => { const v = state[id].chgPct; if (v==null) return; v>0?up++:v<0?down++:0; });
   const m = $('mood');
-  if (!up && !down){ m.textContent='—'; m.className='mix'; return; }
-  if (up > down+1){ m.textContent='▲ RISK ON'; m.className='on'; }
-  else if (down > up+1){ m.textContent='▼ RISK OFF'; m.className='off'; }
-  else { m.textContent='◆ MIXED'; m.className='mix'; }
+  const makro = $('pane-makro') && $('pane-makro').style.display !== 'none';
+  const label = st => st==='g' ? '✓ SEHAT' : st==='y' ? '⚠ WASPADA' : '✕ SAKIT';
+  const cls = st => st==='g' ? 'on' : st==='y' ? 'mix' : 'off';
+  if (makro){
+    const mh = macroHealth();
+    if (!mh){ m.textContent='—'; m.className='mix'; return; }
+    m.textContent = label(mh.st) + ' · ' + mh.score;
+    m.className = cls(mh.st);
+  } else {
+    const kh = marketHealth();
+    if (!kh){ m.textContent='—'; m.className='mix'; return; }
+    m.textContent = label(kh.st);
+    m.className = cls(kh.st);
+  }
+}
+
+/* Pasar-page market health card */
+function updateMarketHealth(){
+  const card = $('mhealth-card');
+  if (!card) return;
+  const kh = marketHealth();
+  const dot = $('mh-dot'), badge = $('mh-badge');
+  if (!kh){
+    $('mh-score').textContent = '—'; badge.textContent = '—'; badge.className = 'hbadge';
+    dot.className = 'hdot'; $('mh-detail').textContent = 'menunggu data pasar…';
+    return;
+  }
+  $('mh-score').textContent = kh.score;
+  badge.textContent = kh.st==='g'?'SEHAT':kh.st==='y'?'WASPADA':'SAKIT';
+  badge.className = 'hbadge ' + kh.st;
+  dot.className = 'hdot ' + kh.st;
+  $('mh-detail').textContent =
+    `${kh.up} pasar naik · ${kh.down} turun dari ${kh.n} pantauan (IHSG, emas, minyak, BTC, S&P, Nasdaq, Nikkei, Hang Seng)`;
 }
 
 function updateMarketTape(){
@@ -1277,17 +1309,33 @@ function deltaHtml(m){
          `<span class="c ${cls}">${arrow} ${sign}${txt}</span>`;
 }
 
-function renderMaster(){
+/* shared health scoring: macro (BPS etc.) and market (live tiles) */
+function macroHealth(){
   const scored = MACRO.filter(m => m.v != null);
   const n = scored.length;
-  if (!n){
-    $('master').innerHTML = '<div class="skel">⏳ mengumpulkan data BPS…</div>';
-    return;
-  }
+  if (!n) return null;
   const hs = scored.map(m => healthOf(m));
   const g = hs.filter(h=>h==='g').length, y = hs.filter(h=>h==='y').length, r = hs.filter(h=>h==='r').length;
   const score = Math.round((2*g + y) / (2*n) * 100);
-  const st = score>=75 ? 'g' : score>=50 ? 'y' : 'r';
+  return {score, st: score>=75?'g':score>=50?'y':'r', g, y, r, n};
+}
+
+function marketHealth(){
+  let up=0, down=0;
+  MOOD_SET.forEach(id => { const v = state[id].chgPct; if (v==null) return; v>0?up++:v<0?down++:0; });
+  const n = up+down;
+  if (!n) return null;
+  const score = Math.round(up/n*100);
+  return {score, st: score>=60?'g':score>=40?'y':'r', up, down, n};
+}
+
+function renderMaster(){
+  const mh = macroHealth();
+  if (!mh){
+    $('master').innerHTML = '<div class="skel">⏳ mengumpulkan data BPS…</div>';
+    return;
+  }
+  const {score, st, g, y, r, n} = mh;
   const color = st==='g' ? 'var(--up)' : st==='y' ? '#eab308' : 'var(--down)';
   const L = Math.PI*80, arc = (score/100*L).toFixed(1);
   $('master').innerHTML =
@@ -1341,7 +1389,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('pane-makro').style.display = makro ? '' : 'none';
   $('pane-pasar').style.display = makro ? 'none' : '';
   window.scrollTo(0, 0);
-  updateTape();
+  updateTape(); updateMood(); updateMarketHealth();
 });
 
 renderMacro();
