@@ -31,6 +31,7 @@
   #mood.on{color:var(--up); border-color:var(--up);}
   #mood.off{color:var(--down); border-color:var(--down);}
   #mood.mix{color:var(--gold); border-color:var(--gold);}
+  #mood.h{color:var(--mut); border-color:#334;}
 
   .tape{overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--line); background:#0c121c; padding:7px 0;}
   .tape-inner{display:inline-block; animation:marq 45s linear infinite; will-change:transform;}
@@ -157,6 +158,7 @@
   .hdot.g{background:var(--up); box-shadow:0 0 8px var(--up);}
   .hdot.y{background:#eab308; box-shadow:0 0 8px #eab308;}
   .hdot.r{background:var(--down); box-shadow:0 0 8px var(--down);}
+  .hdot.h{background:var(--mut); box-shadow:0 0 8px var(--mut);}
   .mcard .mname{font-weight:700; font-size:14px; flex:1;}
   .mcard .mperiod{font-size:10.5px; color:var(--mut);}
   .mcard .mrow2{display:flex; align-items:baseline; gap:10px; margin-top:8px;}
@@ -166,6 +168,7 @@
   .hbadge.g{background:rgba(34,197,94,.15); color:var(--up);}
   .hbadge.y{background:rgba(234,179,8,.15); color:#eab308;}
   .hbadge.r{background:rgba(239,68,68,.15); color:var(--down);}
+  .hbadge.h{background:rgba(139,152,173,.12); color:var(--mut);}
   .mcard .mrow3{font-size:12px; color:var(--mut); margin-top:6px;}
   .mcard .mnote{font-size:11px; color:#5b6678; margin-top:6px; line-height:1.6;}
   #stocks,#sdetail{position:fixed; inset:0; background:var(--bg); z-index:50; transform:translateX(100%);
@@ -559,7 +562,8 @@ async function fetchSymbol(cfg){
     if (vol===0) vol = null; // indices report 0 — show '—' instead of '0 sh'
     return {id:cfg.id, price, prev, chgPct:(price-prev)/prev*100,
             dayHigh:m.regularMarketDayHigh, dayLow:m.regularMarketDayLow,
-            dayOpen:m.regularMarketOpen, volume:vol};
+            dayOpen:m.regularMarketOpen, volume:vol,
+            lastTs: m.regularMarketTime ? m.regularMarketTime*1000 : null};
   } finally { clearTimeout(to); }
 }
 
@@ -570,6 +574,7 @@ function paintFromSnap(snap){
     st.price = s.price; st.prev = s.prev; st.chgPct = s.chgPct;
     st.dayHigh = s.dayHigh; st.dayLow = s.dayLow;
     st.dayOpen = s.dayOpen; st.volume = s.volume;
+    st.lastTs = (s.lastTs!=null ? s.lastTs : null);
     paintCard(id);
   });
   // computed: gold Rp/gram = XAUUSD / 31.1034768 * USDIDR
@@ -592,7 +597,7 @@ async function fetchData(){
     if (r.status!=='fulfilled') return;
     const v = r.value;
     snap[v.id] = {price:v.price, prev:v.prev, chgPct:v.chgPct, dayHigh:v.dayHigh, dayLow:v.dayLow,
-                 dayOpen:v.dayOpen, volume:v.volume};
+                 dayOpen:v.dayOpen, volume:v.volume, lastTs:v.lastTs};
   });
   if (Object.keys(snap).length > 0){
     try{ localStorage.setItem('eh_cache', JSON.stringify({t:Date.now(), snap})); }catch(e){}
@@ -621,6 +626,7 @@ function updateMood(){
   } else {
     const kh = marketHealth();
     if (!kh){ m.textContent='—'; m.className='mix'; return; }
+    if (kh.holiday){ m.textContent='LIBUR'; m.className='h'; return; }
     m.textContent = label(kh.st);
     m.className = cls(kh.st);
   }
@@ -638,6 +644,16 @@ function updateMarketHealth(){
     return;
   }
   $('mh-score').textContent = kh.score;
+  if (kh.holiday){
+    $('mh-score').textContent = '—';
+    badge.textContent = 'LIBUR'; badge.className = 'hbadge h';
+    dot.className = 'hdot h';
+    $('mh-detail').innerHTML = kh.parts.map(p =>
+      p.holiday ? `<span>IHSG libur</span>`
+                : `<span class="c ${p.s===1?'u':p.s===0?'d':''}">${p.label} ${fmtPct(p.chg)}</span>`
+    ).join(' · ');
+    return;
+  }
   badge.textContent = kh.st==='g'?'SEHAT':kh.st==='y'?'WASPADA':'SAKIT';
   badge.className = 'hbadge ' + kh.st;
   dot.className = 'hdot ' + kh.st;
@@ -1347,10 +1363,31 @@ const ID_TILES = [
   {id:'usdidr', label:'USD/IDR', invert:true},
 ];
 
-function marketHealth(){
+/* IHSG libur? True when no IHSG trading happened today: weekend, or a weekday
+   public holiday (by 09:00 WIB the market should be open, but the quote's last
+   timestamp is still from an earlier Jakarta day). Before 09:00 on a weekday we
+   don't flag it — yesterday's close is normal pre-open data. Without a
+   timestamp (old cache) only weekends are flagged. nowMs is test-only. */
+function ihsgHoliday(nowMs){
+  try{
+    const now = new Date(nowMs!=null ? nowMs : Date.now());
+    const parts = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now);
+    const g = t => (parts.find(p=>p.type===t)||{}).value;
+    const wd = g('weekday'), hm = g('hour') + g('minute');
+    if (wd==='Sat' || wd==='Sun') return true;
+    if (hm < '0900') return false;
+    const last = state.ihsg && state.ihsg.lastTs;
+    if (last==null) return false;
+    return jakartaDay(last) < jakartaDay(now.getTime());
+  }catch(e){ return false; }
+}
+
+function marketHealth(nowMs){
+  const holiday = ihsgHoliday(nowMs);
   let pts=0, n=0;
   const parts=[];
   ID_TILES.forEach(t => {
+    if (t.id==='ihsg' && holiday){ parts.push({label:t.label, holiday:true}); return; }
     const v = state[t.id].chgPct;
     if (v==null) return;
     n++;
@@ -1359,6 +1396,7 @@ function marketHealth(){
     pts += s;
     parts.push({label:t.label, chg:v, s});
   });
+  if (holiday) return {score:null, st:'h', parts, n, holiday:true};
   if (!n) return null;
   const score = Math.round(pts/n*100);
   return {score, st: score>=60?'g':score>=40?'y':'r', parts, n};
