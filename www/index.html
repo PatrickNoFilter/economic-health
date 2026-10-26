@@ -229,6 +229,7 @@
 <div class="tabs">
   <button class="tab on" data-tab="makro">🏛️ Makro</button>
   <button class="tab" data-tab="pasar">📈 Pasar</button>
+  <button class="tab" data-tab="global">🌍 Global</button>
 </div>
 
 <main>
@@ -249,12 +250,14 @@
   <div class="sec">🇮🇩 Indonesia</div>
   <div class="grid" id="sec-id"></div>
   <button class="wbtn" id="btnStocks1">📋 Semua Emiten IDX →</button>
+</div>
+<div id="pane-global" style="display:none">
+  <div class="sec">🌍 Global Markets</div>
+  <div class="grid" id="sec-glb"></div>
 
   <div class="sec">🪙 Commodities &amp; Crypto</div>
   <div class="grid" id="sec-cmd"></div>
-
-  <div class="sec">🌍 Global Markets</div>
-  <div class="grid" id="sec-glb"></div>
+</div>
 
   <div class="controls">
     <button id="btnRefresh">⟳ Refresh</button>
@@ -265,7 +268,6 @@
     </select>
     <span id="countdown" class="mono"></span>
   </div>
-</div>
 </main>
 
 <div id="detail">
@@ -656,6 +658,7 @@ async function fetchData(){
 function updateMood(){
   const m = $('mood');
   const makro = $('pane-makro') && $('pane-makro').style.display !== 'none';
+  const glob = $('pane-global') && $('pane-global').style.display !== 'none';
   const label = st => st==='g' ? '✓ SEHAT' : st==='y' ? '⚠ WASPADA' : '✕ SAKIT';
   const cls = st => st==='g' ? 'on' : st==='y' ? 'mix' : 'off';
   if (makro){
@@ -663,6 +666,9 @@ function updateMood(){
     if (!mh){ m.textContent='—'; m.className='mix'; return; }
     m.textContent = label(mh.st) + ' · ' + mh.score;
     m.className = cls(mh.st);
+  } else if (glob){
+    // no health score for foreign markets (Indonesia-only by design)
+    m.textContent='—'; m.className='mix'; return;
   } else {
     const kh = marketHealth();
     if (!kh){ m.textContent='—'; m.className='mix'; return; }
@@ -704,7 +710,7 @@ function updateMarketHealth(){
 }
 
 function updateMarketTape(){
-  const items = SYMBOLS.filter(s=>state[s.id].price!=null).map(s => {
+  const items = SYMBOLS.filter(s=>s.sec==='id' && state[s.id].price!=null).map(s => {
     const st = state[s.id], cls = st.chgPct>0?'u':st.chgPct<0?'d':'';
     return `<span class="titem"><b>${s.label}</b> ${fmt(st.price,s.digits)} <span class="${cls}">${fmtPct(st.chgPct)}</span></span>`;
   }).join('');
@@ -743,7 +749,16 @@ function updateMacroTape(){
 
 function updateTape(){
   const makro = $('pane-makro') && $('pane-makro').style.display !== 'none';
-  if (makro) updateMacroTape(); else updateMarketTape();
+  const glob = $('pane-global') && $('pane-global').style.display !== 'none';
+  if (makro) updateMacroTape(); else if (glob) updateForeignTape(); else updateMarketTape();
+}
+
+function updateForeignTape(){
+  const items = SYMBOLS.filter(s=>(s.sec==='glb'||s.sec==='cmd') && state[s.id].price!=null).map(s => {
+    const st = state[s.id], cls = st.chgPct>0?'u':st.chgPct<0?'d':'';
+    return `<span class="titem"><b>${s.label}</b> ${fmt(st.price,s.digits)} <span class="${cls}">${fmtPct(st.chgPct)}</span></span>`;
+  }).join('');
+  $('tape').innerHTML = items + items; // duplicate for seamless loop
 }
 
 /* IDX-IC sector classification for the 24-stock watchlist */
@@ -1540,9 +1555,10 @@ function renderMacro(){
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
   t.classList.add('on');
-  const makro = t.dataset.tab === 'makro';
-  $('pane-makro').style.display = makro ? '' : 'none';
-  $('pane-pasar').style.display = makro ? 'none' : '';
+  const tab = t.dataset.tab;
+  $('pane-makro').style.display = tab === 'makro' ? '' : 'none';
+  $('pane-pasar').style.display = tab === 'pasar' ? '' : 'none';
+  $('pane-global').style.display = tab === 'global' ? '' : 'none';
   window.scrollTo(0, 0);
   updateTape(); updateMood(); updateMarketHealth();
 });

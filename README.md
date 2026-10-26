@@ -4,6 +4,9 @@ Real-time economic dashboard (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, gold/silver,
 WTI/Brent, BTC/ETH, S&P 500, Nasdaq 100, Nikkei 225, Hang Seng, STI) with
 stock-board style animated numbers. Data: Yahoo Finance v8 chart API (no key).
 
+## Changelog
+- v2.7.0: Third tab 🌍 Global — all foreign prices moved out of Pasar: Global Markets (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE, STI) and Commodities & Crypto (gold, silver, WTI, Brent, BTC, ETH). Pasar now holds Indonesia only (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, BI-Rate) plus Kesehatan Pasar. Ticker tape and header badge are tab-aware: Global tab scrolls foreign prices and shows no health score (health stays Indonesia-only by design). Refresh/interval controls moved below all panes so they work from every tab.
+
 ## Layout
 - `www/index.html` ......... the app (single file — edit this, then rebuild)
 - `android/` ............... WebView wrapper (package `com.patricknofilter.economichealth`)
