@@ -55,6 +55,9 @@
   @keyframes fUp{0%{background:#0f2e22;}100%{background:linear-gradient(180deg,var(--card),var(--card2));}}
   @keyframes fDown{0%{background:#33141a;}100%{background:linear-gradient(180deg,var(--card),var(--card2));}}
   .clabel{font-size:11.5px; color:var(--mut); font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:6px;}
+  .stale-tag{display:none; font-size:9px; font-weight:800; color:var(--gold); border:1px solid var(--gold); border-radius:8px; padding:1px 6px; letter-spacing:.5px; white-space:nowrap;}
+  .card.stale{opacity:.55;}
+  .card.stale .stale-tag{display:inline-block;}
   .livebadge{font-size:9px; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:.5px;}
   .livebadge.open{background:rgba(52,211,153,.14); color:var(--up); border:1px solid var(--up);}
   .livebadge.closed{background:rgba(139,152,173,.12); color:var(--mut); border:1px solid #334;}
@@ -459,7 +462,7 @@ function buildCards(){
     const card = document.createElement('div');
     card.className = 'card'; card.id = 'card-' + cfg.id;
     card.innerHTML =
-      `<div class="clabel"><span>${cfg.label}</span>` +
+      `<div class="clabel"><span>${cfg.label}</span><span class="stale-tag">DATA LAMA</span>` +
       (cfg.live ? `<span class="livebadge closed" id="live-${cfg.id}">···</span>` : '') + `</div>` +
       `<div class="cval mono" id="val-${cfg.id}"></div>` +
       `<div class="crow"><span class="chg flat mono" id="chg-${cfg.id}">—</span>` +
@@ -589,9 +592,35 @@ function paintFromSnap(snap){
   updateMood(); updateMarketHealth(); updateTape(); updateLive();
 }
 
+/* ids refreshed by the last fetchData cycle; null = no cycle completed yet */
+let freshIds = null, lastMissingKey = '';
+
+/* Dim tiles whose values were NOT refreshed this cycle + show DATA LAMA tag.
+   Static (BI-Rate) tiles are never stale; computed Emas Rp/gram is stale only
+   when one of its inputs (gold, usdidr) is stale. */
+function markStale(){
+  if (freshIds==null) return;
+  SYMBOLS.forEach(cfg=>{
+    const card = $('card-' + cfg.id);
+    if (!card || !state[cfg.id] || state[cfg.id].price==null) return;
+    let stale;
+    if (cfg.staticRate) stale = false;
+    else if (cfg.computed) stale = !freshIds.has('gold') || !freshIds.has('usdidr');
+    else stale = !freshIds.has(cfg.id);
+    card.classList.toggle('stale', stale);
+  });
+}
+
 async function fetchData(){
   const cfgs = SYMBOLS.filter(s=>s.sym);
-  const results = await Promise.allSettled(cfgs.map(fetchSymbol));
+  let results = await Promise.allSettled(cfgs.map(fetchSymbol));
+  // one retry for failed symbols — Yahoo 429s are often intermittent
+  const failedIdx = results.map((r,i)=>r.status==='fulfilled'?-1:i).filter(i=>i>=0);
+  if (failedIdx.length){
+    await new Promise(r=>setTimeout(r, 2000));
+    const retry = await Promise.allSettled(failedIdx.map(i=>fetchSymbol(cfgs[i])));
+    retry.forEach((r,k)=>{ results[failedIdx[k]] = r; });
+  }
   const snap = {};
   results.forEach(r=>{
     if (r.status!=='fulfilled') return;
@@ -602,7 +631,16 @@ async function fetchData(){
   if (Object.keys(snap).length > 0){
     try{ localStorage.setItem('eh_cache', JSON.stringify({t:Date.now(), snap})); }catch(e){}
     paintFromSnap(snap);
+    freshIds = new Set(Object.keys(snap));
+    markStale();
     setNet(true);
+    const missing = cfgs.filter(c=>!freshIds.has(c.id) && state[c.id].price!=null);
+    const missingKey = missing.map(c=>c.id).join(',');
+    if (!missing.length) lastMissingKey = '';
+    else if (missingKey!==lastMissingKey){
+      lastMissingKey = missingKey;
+      toast('Gagal refresh: ' + missing.map(c=>c.label).join(', ') + ' — menampilkan data lama');
+    }
   } else {
     setNet(false);
     const c = localStorage.getItem('eh_cache');
@@ -610,6 +648,8 @@ async function fetchData(){
       try{ paintFromSnap(JSON.parse(c).snap); toast('Update gagal — menampilkan data terakhir'); }
       catch(e){ toast('Update gagal dan tidak ada cache'); }
     } else toast('Update gagal — belum ada data');
+    freshIds = new Set();
+    markStale();
   }
 }
 
