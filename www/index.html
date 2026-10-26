@@ -244,7 +244,7 @@
     <div class="mrow1"><span class="hdot" id="mh-dot"></span><span class="mname">Kesehatan Pasar</span><span class="mperiod">real-time</span></div>
     <div class="mrow2"><span class="mval mono" id="mh-score" style="font-size:24px">—</span><span class="munit">/ 100</span><span class="hbadge" id="mh-badge">—</span></div>
     <div class="mrow3" id="mh-detail">menunggu data pasar…</div>
-    <div class="mnote">IHSG naik = sehat · USD/IDR turun (rupiah menguat) = sehat. Tanpa bursa global.</div>
+    <div class="mnote">IHSG naik = sehat · USD/IDR turun (rupiah menguat) = sehat · Breadth &gt;55% = sehat · Asing = rerata BBCA/BBRI/BMRI/TLKM. Tanpa bursa global.</div>
   </div>
   <div class="sec">🇮🇩 Indonesia</div>
   <div class="grid" id="sec-id"></div>
@@ -698,7 +698,8 @@ function updateMarketHealth(){
   badge.className = 'hbadge ' + kh.st;
   dot.className = 'hdot ' + kh.st;
   $('mh-detail').innerHTML = kh.parts.map(p =>
-    `<span class="c ${p.s===1?'u':p.s===0?'d':''}">${p.label} ${fmtPct(p.chg)}</span>`
+    p.pct!=null ? `<span class="c ${p.s===1?'u':p.s===0?'d':''}">${p.label} ${fmt(p.pct,0)}%</span>`
+                : `<span class="c ${p.s===1?'u':p.s===0?'d':''}">${p.label} ${fmtPct(p.chg)}</span>`
   ).join(' · ');
 }
 
@@ -1396,13 +1397,6 @@ function macroHealth(){
   return {score, st: score>=75?'g':score>=50?'y':'r', g, y, r, n};
 }
 
-/* Pasar health = Indonesian markets only (no globals):
-   IHSG up = good; USD/IDR down (stronger rupiah) = good. */
-const ID_TILES = [
-  {id:'ihsg',   label:'IHSG',    invert:false},
-  {id:'usdidr', label:'USD/IDR', invert:true},
-];
-
 /* IHSG libur? True when no IHSG trading happened today: weekend, or a weekday
    public holiday (by 09:00 WIB the market should be open, but the quote's last
    timestamp is still from an earlier Jakarta day). Before 09:00 on a weekday we
@@ -1422,24 +1416,72 @@ function ihsgHoliday(nowMs){
   }catch(e){ return false; }
 }
 
+/* Realtime market health, Indonesia-only, 4 gauges (weights IHSG 25 ·
+   USD/IDR 20 inverted · Breadth 25 · Asing-proxy 30):
+   Breadth = advancers/(advancers+decliners) over the 24-stock watchlist
+   (±0,05% flat band, same as the detail-view bar); Asing-proxy = average move
+   of BBCA/BBRI/BMRI/TLKM, where foreign money concentrates (real IDX foreign
+   flow is not on Yahoo; Indo 10Y yield has no Yahoo symbol either — both
+   verified 2026-10-26, so neither is scored). Watchlist data older than 10 min
+   counts as unavailable and scoring falls back to the old IHSG+USD/IDR formula. */
+let watchData = null; // {rows, t} — last 24-stock watchlist fetch
+
+async function refreshWatchlist(){
+  try{
+    const rows = await loadWatchlistRows();
+    if (rows.length){ watchData = {rows, t: Date.now()}; updateMarketHealth(); updateMood(); }
+  }catch(e){}
+}
+
+/* advancers/(advancers+decliners); flat stocks excluded from the ratio */
+function breadthScore(rows){
+  let up=0, down=0;
+  rows.forEach(r=>{ r.chg>0.05 ? up++ : r.chg<-0.05 ? down++ : 0; });
+  const tot = up+down;
+  if (!tot) return null;
+  const advPct = up/tot*100;
+  return {advPct, s: advPct>=55 ? 1 : advPct>=45 ? 0.5 : 0};
+}
+
+const FOREIGN_FAVS = ['BBCA','BBRI','BMRI','TLKM'];
+function proxyScore(rows){
+  const sel = rows.filter(r=>FOREIGN_FAVS.includes(r.sym));
+  if (!sel.length) return null;
+  const avg = sel.reduce((a,r)=>a+r.chg,0)/sel.length;
+  return {chg:avg, s: avg>0.25 ? 1 : avg<-0.25 ? 0 : 0.5};
+}
+
 function marketHealth(nowMs){
-  const holiday = ihsgHoliday(nowMs);
-  let pts=0, n=0;
+  const now = nowMs!=null ? nowMs : Date.now();
+  const holiday = ihsgHoliday(now);
   const parts=[];
-  ID_TILES.forEach(t => {
-    if (t.id==='ihsg' && holiday){ parts.push({label:t.label, holiday:true}); return; }
-    const v = state[t.id].chgPct;
-    if (v==null) return;
-    n++;
-    let s = v>0.25 ? 1 : v<-0.25 ? 0 : 0.5; // flat band ±0,25%
-    if (t.invert) s = 1-s;
-    pts += s;
-    parts.push({label:t.label, chg:v, s});
-  });
-  if (holiday) return {score:null, st:'h', parts, n, holiday:true};
-  if (!n) return null;
-  const score = Math.round(pts/n*100);
-  return {score, st: score>=60?'g':score>=40?'y':'r', parts, n};
+  let ihS = null, fxS = null;
+  if (holiday) parts.push({label:'IHSG', holiday:true});
+  else {
+    const ih = state.ihsg.chgPct;
+    if (ih!=null){ ihS = ih>0.25?1:ih<-0.25?0:0.5; parts.push({label:'IHSG', chg:ih, s:ihS}); }
+  }
+  const fx = state.usdidr.chgPct;
+  if (fx!=null){ fxS = 1-(fx>0.25?1:fx<-0.25?0:0.5); parts.push({label:'USD/IDR', chg:fx, s:fxS}); }
+  if (holiday) return {score:null, st:'h', parts, n:parts.length, holiday:true};
+  const fresh = (watchData && (now - watchData.t < 10*60*1000)) ? watchData.rows : null;
+  const br = fresh ? breadthScore(fresh) : null;
+  const px = fresh ? proxyScore(fresh) : null;
+  if (br) parts.push({label:'Breadth', pct:br.advPct, s:br.s});
+  if (px) parts.push({label:'Asing', chg:px.chg, s:px.s});
+  if (br==null && px==null && ihS!=null && fxS!=null){
+    const score = Math.round((ihS+fxS)/2*100); // old 2-gauge formula, unchanged
+    return {score, st: score>=60?'g':score>=40?'y':'r', parts, n:parts.length};
+  }
+  const comps = [];
+  if (ihS!=null) comps.push({w:25, s:ihS});
+  if (fxS!=null) comps.push({w:20, s:fxS});
+  if (br) comps.push({w:25, s:br.s});
+  if (px) comps.push({w:30, s:px.s});
+  if (!comps.length) return null;
+  const wsum = comps.reduce((a,c)=>a+c.w,0);
+  const score = Math.round(comps.reduce((a,c)=>a+c.w*c.s,0)/wsum*100);
+  return {score, st: score>=60?'g':score>=40?'y':'r', parts, n:parts.length};
 }
 
 function renderMaster(){
@@ -1508,7 +1550,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 renderMacro();
 
 tickClock(); setInterval(tickClock, 1000);
-schedule(); fetchData();
+schedule(); fetchData(); refreshWatchlist(); setInterval(refreshWatchlist, 5*60*1000);
 </script>
 </body>
 </html>
