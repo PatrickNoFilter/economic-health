@@ -12,6 +12,9 @@ animated numbers. Data: Yahoo Finance v8 chart API (no key).
 - 🌍 Global — world indices (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE,
   STI), commodities (gold, silver, WTI, Brent) and crypto (BTC, ETH).
 
+Pull down from the very top of any tab to refresh (same as the ⟳ button);
+disabled while a detail overlay is open.
+
 ## Layout
 - `www/index.html` ......... the app (single file — edit this, then rebuild)
 - `android/` ............... WebView wrapper (package `com.patricknofilter.economichealth`)
@@ -92,3 +95,4 @@ so it always increases.
 - v2.5.4: stale-data fix — failed symbol fetches retry once after 2s (Yahoo 429s are often intermittent); tiles not refreshed in a cycle are dimmed with a DATA LAMA tag (BI-Rate exempt, Emas Rp/gram stale only when gold/usdidr stale); a toast names the failed symbols (once per failure set, not every 60s cycle).
 - v2.6.0: Kesehatan Pasar now scores 4 gauges — IHSG 25, USD/IDR 20 (inverted), Breadth 25 (advancers/(advancers+decliners) over the 24-stock watchlist, ±0,05% flat band), Asing-proxy 30 (average BBCA/BBRI/BMRI/TLKM; real IDX foreign flow and Indo 10Y yield are not on Yahoo — verified 2026-10-26, so neither is scored). Watchlist refreshes every 5 min (startup + interval); data older than 10 min counts as unavailable and scoring falls back to the old IHSG+USD/IDR formula. Card detail now shows Breadth % and Asing %. Holiday mode unchanged (LIBUR, no breadth/proxy).
 - v2.7.0: third tab 🌍 Global — all foreign prices moved out of Pasar: Global Markets (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE, STI) and Commodities & Crypto (gold, silver, WTI, Brent, BTC, ETH). Pasar now holds Indonesia only (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, BI-Rate) plus Kesehatan Pasar and the IDX stock browser. Ticker tape and header badge are tab-aware: the Global tab scrolls foreign prices and shows no health score (health stays Indonesia-only by design). Refresh/interval controls moved below all panes so they work from every tab.
+- v2.8.0: pull-to-refresh — drag down from the very top of any tab to refresh (same action as the ⟳ button: resets the countdown and refetches market data). A ⟳ indicator slides in as you pull, turns green past the 72px threshold, and spins until the refresh settles. Disabled while a detail overlay is open (those scroll internally).
