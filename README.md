@@ -1,23 +1,28 @@
-# Economic Health — Android app (source)
+# Indonesia Economy Health — Android app (source)
 
-Real-time economic dashboard (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, gold/silver,
-WTI/Brent, BTC/ETH, S&P 500, Nasdaq 100, Nikkei 225, Hang Seng, STI) with
-stock-board style animated numbers. Data: Yahoo Finance v8 chart API (no key).
-
-## Changelog
-- v2.7.0: Third tab 🌍 Global — all foreign prices moved out of Pasar: Global Markets (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE, STI) and Commodities & Crypto (gold, silver, WTI, Brent, BTC, ETH). Pasar now holds Indonesia only (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, BI-Rate) plus Kesehatan Pasar. Ticker tape and header badge are tab-aware: Global tab scrolls foreign prices and shows no health score (health stays Indonesia-only by design). Refresh/interval controls moved below all panes so they work from every tab.
+Three-tab dashboard for Indonesia's economic health, with stock-board style
+animated numbers. Data: Yahoo Finance v8 chart API (no key).
+- 🏛️ Makro — 13 BPS / S&P Global / Kemenperin macro indicators (GDP, inflation,
+  unemployment, poverty, trade balance, reserves, HDI, Gini, NTP, tourists,
+  PMI, IKI, government debt), each scored SEHAT / WASPADA / SAKIT, plus a
+  master 0–100 gauge.
+- 📈 Pasar — Indonesia markets only: IHSG, USD/IDR, EUR/IDR, gold Rp/gram,
+  BI-Rate, plus the Indonesia-only Kesehatan Pasar card (IHSG, USD/IDR,
+  market breadth, foreign-favorite proxy) and the full IDX stock browser.
+- 🌍 Global — world indices (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE,
+  STI), commodities (gold, silver, WTI, Brent) and crypto (BTC, ETH).
 
 ## Layout
 - `www/index.html` ......... the app (single file — edit this, then rebuild)
 - `android/` ............... WebView wrapper (package `com.patricknofilter.economichealth`)
 - `build.sh` ............... APK builder (manual aapt2 pipeline, no Gradle)
 - `keystore/eh.keystore` ... signing key — KEEP, reuse for every update
-- `out/EconomicHealth-v1.apk`  built APK
+- `out/EconomicHealth-vX.Y.Z.apk`  built APK (one per release)
 
 ## Rebuild on this machine (the VM)
 ```bash
 bash ~/workspace/economic-health/build.sh
-# output: out/EconomicHealth-v1.apk
+# output: out/EconomicHealth-v2.7.0.apk (reads version from the VERSION file)
 ```
 Needs: Android SDK at `~/workspace/android-sdk`, JDK at `~/workspace/jdk`.
 
@@ -80,9 +85,10 @@ so it always increases.
 - v2.3.0: header mood badge replaced: MIXED/RISK ON/RISK OFF → SEHAT/WASPADA/SAKIT, tab-aware (Makro tab: macro master score, e.g. "✓ SEHAT · 81"; Pasar tab: market health). New "Kesehatan Pasar" card at the top of the Pasar page: 0–100 score = % of 9 tracked markets up (≥60 SEHAT / 40–60 WASPADA / <40 SAKIT — boundaries reproduce the old RISK ON/MIXED/RISK OFF exactly), with up/down counts. Shared macroHealth()/marketHealth() scorers.
 - v2.3.1: Kesehatan Pasar goes Indonesia-only (no global markets): scored from IHSG + USD/IDR with direction-aware logic (IHSG up = good; USD/IDR down = rupiah menguat = good; ±0,25% flat band), 0–100 with ≥60 SEHAT / 40–60 WASPADA / <40 SAKIT. Card detail shows both components colored by good/bad + explainer note. MOOD_SET retired.
 - v2.4.0: +BI-Rate tile on the Pasar page (Indonesia section): static policy-rate tile — 5,75% (RDG 20–21 Okt 2026; Gubernur BI Destry Damayanti; deposit facility 5,00%, lending facility 6,50%) vs 4,75% Okt 2025 → "+ 1,00 pp YoY". Static tiles skip the Yahoo fetch loop (sym:null) and are seeded + painted once at startup; generic staticRate branch in paintCard.
-- v2.5.0: package renamed com.patricknofilter.economichealth → com.patricknofilter.economichealth (all source, manifest, build.sh CN, docs). NOTE: new package = new app identity on Android; install fresh alongside the old build, then uninstall the old one. Same signing key.
+- v2.5.0: package renamed com.patrisius.economichealth → com.patricknofilter.economichealth (all source, manifest, build.sh CN, docs). NOTE: new package = new app identity on Android; install fresh alongside the old build, then uninstall the old one. Same signing key.
 - v2.5.1: package rename reverted — back to com.patricknofilter.economichealth so the APK updates the installed app in place. If v2.5.0 (com.patricknofilter.*) was installed, uninstall that duplicate.
 - v2.5.2: package is com.patricknofilter.economichealth for good (re-applied v2.5.0 rename). This updates the v2.5.0 install in place. Uninstall the old com.patrisius.economichealth app if still present.
 - v2.5.3: IHSG holiday sub-indicator — Kesehatan Pasar card shows LIBUR (neutral, score —) with detail "IHSG libur · USD/IDR ±x%" when no IHSG trading happened today (weekend, or weekday public holiday detected via Yahoo regularMarketTime stale vs Jakarta date after 09:00 WIB); header badge shows LIBUR too. Trading days score exactly as before.
 - v2.5.4: stale-data fix — failed symbol fetches retry once after 2s (Yahoo 429s are often intermittent); tiles not refreshed in a cycle are dimmed with a DATA LAMA tag (BI-Rate exempt, Emas Rp/gram stale only when gold/usdidr stale); a toast names the failed symbols (once per failure set, not every 60s cycle).
 - v2.6.0: Kesehatan Pasar now scores 4 gauges — IHSG 25, USD/IDR 20 (inverted), Breadth 25 (advancers/(advancers+decliners) over the 24-stock watchlist, ±0,05% flat band), Asing-proxy 30 (average BBCA/BBRI/BMRI/TLKM; real IDX foreign flow and Indo 10Y yield are not on Yahoo — verified 2026-10-26, so neither is scored). Watchlist refreshes every 5 min (startup + interval); data older than 10 min counts as unavailable and scoring falls back to the old IHSG+USD/IDR formula. Card detail now shows Breadth % and Asing %. Holiday mode unchanged (LIBUR, no breadth/proxy).
+- v2.7.0: third tab 🌍 Global — all foreign prices moved out of Pasar: Global Markets (S&P 500, Nasdaq, Nikkei, Hang Seng, KOSPI, SSE, STI) and Commodities & Crypto (gold, silver, WTI, Brent, BTC, ETH). Pasar now holds Indonesia only (IHSG, USD/IDR, EUR/IDR, gold Rp/gram, BI-Rate) plus Kesehatan Pasar and the IDX stock browser. Ticker tape and header badge are tab-aware: the Global tab scrolls foreign prices and shows no health score (health stays Indonesia-only by design). Refresh/interval controls moved below all panes so they work from every tab.
